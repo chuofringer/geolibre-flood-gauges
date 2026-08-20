@@ -96,6 +96,39 @@ export function openGaugePanel(app: GeoLibreAppAPI, gauge: GaugeProperties): voi
   app.openFloatingPanel?.(PANEL_ID);
 }
 
+/**
+ * Re-registers the panel with a not-found render for an unknown or
+ * invalid deep-link id, then opens it. No NOAA/NWPS fetch — a 404
+ * would increment GeoLibre Diagnostics, which is why the deep-link
+ * handler never looks the id up remotely.
+ */
+export function openGaugeNotFound(app: GeoLibreAppAPI, lid: string): void {
+  app.registerFloatingPanel?.({
+    id: PANEL_ID,
+    title: PANEL_TITLE,
+    defaultWidth: 360,
+    position: "top-right",
+    render: (container) => renderGaugeNotFound(container, lid),
+  });
+  app.openFloatingPanel?.(PANEL_ID);
+}
+
+function renderGaugeNotFound(container: HTMLElement, lid: string): void {
+  container.classList.add("fg-panel");
+
+  const header = el("div", "fg-header");
+  const lidRow = el("div", "fg-lid-row");
+  // User-supplied lid: always textContent (via el()), never innerHTML.
+  lidRow.appendChild(el("h2", "fg-lid", lid));
+  header.appendChild(lidRow);
+  container.appendChild(header);
+
+  container.appendChild(el("p", "fg-not-found", "No gauge found for this id."));
+  container.appendChild(
+    el("p", "fg-muted fg-not-found-hint", "Check the NOAA LID (letters and digits, up to 10 characters)."),
+  );
+}
+
 async function loadGaugeData(
   lid: string,
   signal: AbortSignal,

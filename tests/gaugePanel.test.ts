@@ -18,7 +18,7 @@ vi.mock("../src/panel/hydrograph", () => ({
   },
 }));
 
-const { registerPanel, openGaugePanel, PANEL_ID } = await import("../src/panel/gaugePanel");
+const { registerPanel, openGaugePanel, openGaugeNotFound, PANEL_ID } = await import("../src/panel/gaugePanel");
 
 const gauge: GaugeProperties = {
   gaugelid: "PTTP1",
@@ -274,5 +274,25 @@ describe("gaugePanel", () => {
 
     expect(container.querySelector(".fg-observed-value")?.textContent).toMatch(/12\.3/);
     expect(container.querySelector(".fg-stagebar-marker")).not.toBeNull();
+  });
+
+  it("openGaugeNotFound opens the panel and sets the lid via textContent", () => {
+    const host = new FakeHost();
+    registerPanel(host.app);
+    openGaugeNotFound(host.app, "<script>alert(1)</script>");
+    expect(host.openPanels.has(PANEL_ID)).toBe(true);
+
+    const panel = host.panels.get(PANEL_ID)!;
+    const container = document.createElement("div");
+    panel.render(container);
+
+    const lidEl = container.querySelector(".fg-lid");
+    expect(lidEl?.textContent).toBe("<script>alert(1)</script>");
+    expect(container.querySelector("script")).toBeNull();
+    expect(container.textContent).toContain("No gauge found for this id.");
+    expect(container.textContent).toContain(
+      "Check the NOAA LID (letters and digits, up to 10 characters).",
+    );
+    expect(container.querySelector(".fg-link")).toBeNull();
   });
 });

@@ -68,8 +68,9 @@ https://web.geolibre.app/?flood-gauge=PTTP1
 ```
 
 `flood-gauge` takes a NOAA gauge LID (letters/digits, up to 10
-characters). The panel footer's "Open on flood.live" link takes you to
-the full flood.live experience for that gauge.
+characters). An unknown LID opens the panel with "No gauge found"
+instead of doing nothing. The panel footer's "Open on flood.live" link
+takes you to the full flood.live experience for that gauge.
 
 ## Development
 

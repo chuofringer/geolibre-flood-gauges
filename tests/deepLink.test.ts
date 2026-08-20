@@ -72,31 +72,48 @@ describe("handleDeepLink", () => {
     vi.unstubAllGlobals();
   });
 
-  it("silently no-ops on an unknown gauge id (no throw)", async () => {
+  it("calls onGaugeMissing on an unknown gauge id (no throw, no fly)", async () => {
     const host = trackedHost();
     const manager = await readyManager(host, collection([gauge("PTTP1")]));
     const params = new URLSearchParams({ [DEEP_LINK_PARAM]: "NOPE1" });
     const onFound = vi.fn();
+    const onMissing = vi.fn();
 
-    await expect(handleDeepLink(host.app, params, manager, onFound)).resolves.toBeUndefined();
+    await expect(handleDeepLink(host.app, params, manager, onFound, onMissing)).resolves.toBeUndefined();
     expect(onFound).not.toHaveBeenCalled();
+    expect(onMissing).toHaveBeenCalledTimes(1);
+    expect(onMissing).toHaveBeenCalledWith(host.app, "NOPE1");
     expect(host.fitBoundsCalls).toHaveLength(0);
 
     manager.stop();
     vi.unstubAllGlobals();
   });
 
-  it("rejects invalid ids (path traversal, empty, too long) before any lookup", async () => {
+  it("calls onGaugeMissing for invalid ids without looking them up", async () => {
     const host = trackedHost();
     const manager = await readyManager(host, collection([gauge("PTTP1")]));
     const onFound = vi.fn();
+    const onMissing = vi.fn();
+    const findSpy = vi.spyOn(manager, "findGauge");
 
-    for (const bad of ["../../etc/passwd", "", "ABCDEFGHIJK"]) {
-      const params = new URLSearchParams();
-      if (bad) params.set(DEEP_LINK_PARAM, bad);
-      await handleDeepLink(host.app, params, manager, onFound);
+    for (const bad of ["../../etc/passwd", "ABCDEFGHIJK"]) {
+      const params = new URLSearchParams({ [DEEP_LINK_PARAM]: bad });
+      await handleDeepLink(host.app, params, manager, onFound, onMissing);
     }
     expect(onFound).not.toHaveBeenCalled();
+    expect(onMissing).toHaveBeenCalledTimes(2);
+    expect(onMissing).toHaveBeenNthCalledWith(1, host.app, "../../etc/passwd");
+    expect(onMissing).toHaveBeenNthCalledWith(2, host.app, "ABCDEFGHIJK");
+    expect(findSpy).not.toHaveBeenCalled();
+
+    // Empty string is treated as absent: no panel, no lookup.
+    onMissing.mockClear();
+    const empty = new URLSearchParams();
+    empty.set(DEEP_LINK_PARAM, "");
+    await handleDeepLink(host.app, empty, manager, onFound, onMissing);
+    expect(onMissing).not.toHaveBeenCalled();
+    expect(onFound).not.toHaveBeenCalled();
+    expect(findSpy).not.toHaveBeenCalled();
 
     manager.stop();
     vi.unstubAllGlobals();
@@ -106,8 +123,12 @@ describe("handleDeepLink", () => {
     const host = trackedHost();
     const manager = await readyManager(host, collection([gauge("PTTP1")]));
     const onFound = vi.fn();
-    await handleDeepLink(host.app, new URLSearchParams(), manager, onFound);
+    const onMissing = vi.fn();
+    const findSpy = vi.spyOn(manager, "findGauge");
+    await handleDeepLink(host.app, new URLSearchParams(), manager, onFound, onMissing);
     expect(onFound).not.toHaveBeenCalled();
+    expect(onMissing).not.toHaveBeenCalled();
+    expect(findSpy).not.toHaveBeenCalled();
     manager.stop();
     vi.unstubAllGlobals();
   });

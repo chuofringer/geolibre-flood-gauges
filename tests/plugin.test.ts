@@ -148,7 +148,7 @@ describe("plugin (T3 host contract)", () => {
     plugin.deactivate(host.app);
   });
 
-  it("handleUrlParameters: unknown id is a no-op, never throws", async () => {
+  it("handleUrlParameters: unknown id opens the not-found panel, never throws", async () => {
     stubGaugeFetch(collection([gauge("PTTP1")]));
     const plugin = await loadPlugin();
     plugin.activate(host.app);
@@ -158,6 +158,17 @@ describe("plugin (T3 host contract)", () => {
       plugin.handleUrlParameters?.(host.app, new URLSearchParams({ "flood-gauge": "NOPE1" })),
     ).resolves.toBeUndefined();
     expect(host.fitBoundsCalls).toHaveLength(0);
+    expect(host.openPanels.has("flood-gauges-panel")).toBe(true);
+
+    const panel = host.panels.get("flood-gauges-panel")!;
+    const container = document.createElement("div");
+    panel.render(container);
+    expect(container.querySelector(".fg-lid")?.textContent).toBe("NOPE1");
+    expect(container.textContent).toContain("No gauge found for this id.");
+    expect(container.textContent).toContain(
+      "Check the NOAA LID (letters and digits, up to 10 characters).",
+    );
+    expect(container.querySelector(".fg-link")).toBeNull();
 
     plugin.deactivate(host.app);
   });
