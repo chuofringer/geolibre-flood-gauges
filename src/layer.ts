@@ -1,4 +1,5 @@
-import { NOAA_MAP_SERVER_URL, REFRESH_INTERVAL } from "./core/constants";
+import { FETCH_TIMEOUT_MS, NOAA_MAP_SERVER_URL, REFRESH_INTERVAL } from "./core/constants";
+import { StatusChip, type LoadState } from "./statusChip";
 import { fetchAllGauges } from "./data/noaaMapServer";
 import { aggregateToHex, FLOOD_STATUSES, type HexFeatureCollection } from "./core/hexAggregation";
 import { gaugeLayerStyle, gaugeHitLayerPaint, hexLayerStyle, HEX_COLOR_EXPRESSION } from "./style";
@@ -77,6 +78,9 @@ export class GaugeLayerManager {
   private generation = 0;
   private inFlight = false;
   private stopped = false;
+  private loadState: LoadState = "loading";
+  private lastOkAt: number | null = null;
+  private readonly chip = new StatusChip();
   private registered = false;
   private boundMap: MapLike | null = null;
   private refreshIntervalMs = REFRESH_INTERVAL;
@@ -99,7 +103,13 @@ export class GaugeLayerManager {
     });
   }
 
+  getLoadState(): LoadState {
+    return this.loadState;
+  }
+
   async start(): Promise<void> {
+    this.chip.mount();
+    this.renderChip();
     this.bindMapHandlers();
     window.addEventListener("geolibre-layer-labels-change", this.bindMapHandlersRef);
     await this.refresh(true);
@@ -130,6 +140,7 @@ export class GaugeLayerManager {
     }
     this.abortController?.abort();
     this.abortController = null;
+    this.chip.unmount();
     this.unbindMapHandlers();
     window.removeEventListener("geolibre-layer-labels-change", this.bindMapHandlersRef);
     this.app.unregisterExternalNativeLayer?.(LAYER_ID);
@@ -161,9 +172,12 @@ export class GaugeLayerManager {
   private async refresh(isFirst: boolean): Promise<void> {
     if (this.inFlight || this.stopped) return;
     this.inFlight = true;
+    this.loadState = "loading";
+    this.renderChip();
     const generation = this.generation;
     const controller = new AbortController();
     this.abortController = controller;
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
       const data = await fetchAllGauges(controller.signal);
       // A fetch resolving after stop() (or a superseded generation) must
@@ -171,6 +185,9 @@ export class GaugeLayerManager {
       if (this.stopped || generation !== this.generation) return;
 
       const digest = computeDigest(data);
+      this.lastOkAt = Date.now();
+      this.loadState = "ok";
+      this.renderChip();
       if (!isFirst && this.registered && digest === this.digest) {
         // Content unchanged (plan D4 digest skip) — no re-register.
         return;
@@ -181,14 +198,32 @@ export class GaugeLayerManager {
       this.registerAll(data, !this.registered);
       this.registered = true;
     } catch (err) {
+      // stop()/generation bump already aborted us — don't paint an error
+      // onto a dead plugin.
+      if (this.stopped || generation !== this.generation) return;
       // Failed fetch (including the very first one): log, keep the
-      // interval, retry next tick. Never an unhandled rejection, never a
-      // permanently blank plugin.
+      // interval, surface retry. Never an unhandled rejection, never a
+      // permanently blank plugin. Timeout abort lands here too so
+      // inFlight cannot stick until the browser gives up.
       console.error("[geolibre-flood-gauges] gauge refresh failed", err);
+      this.loadState = "error";
+      this.renderChip();
     } finally {
+      clearTimeout(timeoutId);
       if (this.abortController === controller) this.abortController = null;
       this.inFlight = false;
     }
+  }
+
+  private renderChip(): void {
+    this.chip.render({
+      state: this.loadState,
+      hasData: this.data != null,
+      lastOkAt: this.lastOkAt,
+      onRetry: () => {
+        void this.refreshNow();
+      },
+    });
   }
 
   private registerAll(data: GaugeGeoJSON, first: boolean): void {
