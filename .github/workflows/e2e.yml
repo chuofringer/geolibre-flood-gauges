@@ -42,23 +42,24 @@ jobs:
 
       - name: Serve the plugin bundle
         working-directory: plugin
-        run: npm run serve:geolibre 8123 &
+        run: npm run serve:geolibre -- 8123 &
 
-      - name: Checkout pinned GeoLibre (registry floor build)
+      - name: Checkout pinned GeoLibre
         uses: actions/checkout@v4
         with:
           repository: ${{ env.GEOLIBRE_REPO }}
           ref: ${{ env.GEOLIBRE_REF }}
           path: geolibre
 
+      # The plugin is installed via the seeded `geolibre.desktopSettings`
+      # manifest-URL list (playwright.config.ts), so the GeoLibre build
+      # needs no registry env var.
       - name: Build and serve GeoLibre web
         working-directory: geolibre
-        env:
-          VITE_GEOLIBRE_PLUGIN_REGISTRY_URL: http://localhost:8123/plugin.json
         run: |
           npm ci
           npm run build
-          npx serve -l 5173 dist &
+          npx serve -s -l 5173 apps/geolibre-desktop/dist &
           npx wait-on http://localhost:5173
 
       - name: Install Playwright browsers
@@ -69,6 +70,7 @@ jobs:
         working-directory: plugin
         env:
           GEOLIBRE_URL: http://localhost:5173
+          PLUGIN_MANIFEST_URL: http://localhost:8123/plugin.json
         run: npm run test:e2e
 
       - uses: actions/upload-artifact@v4
@@ -104,7 +106,7 @@ jobs:
 
       - name: Serve the plugin bundle
         working-directory: plugin
-        run: npm run serve:geolibre 8123 &
+        run: npm run serve:geolibre -- 8123 &
 
       - name: Checkout GeoLibre at the minGeoLibreVersion floor
         uses: actions/checkout@v4
@@ -115,12 +117,10 @@ jobs:
 
       - name: Build and serve GeoLibre web (floor)
         working-directory: geolibre-floor
-        env:
-          VITE_GEOLIBRE_PLUGIN_REGISTRY_URL: http://localhost:8123/plugin.json
         run: |
           npm ci
           npm run build
-          npx serve -l 5174 dist &
+          npx serve -s -l 5174 apps/geolibre-desktop/dist &
           npx wait-on http://localhost:5174
 
       - name: Install Playwright browsers
@@ -131,4 +131,5 @@ jobs:
         working-directory: plugin
         env:
           GEOLIBRE_URL: http://localhost:5174
+          PLUGIN_MANIFEST_URL: http://localhost:8123/plugin.json
         run: npx playwright test --grep "minGeoLibreVersion floor"

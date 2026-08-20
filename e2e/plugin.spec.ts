@@ -4,25 +4,27 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // T4 end-to-end smoke (plan §5). Fossilizes the manual A3 spike's findings
-// — refresh-in-place, style survival, basemap-switch survival, deep-link
-// cold load — against a real GeoLibre web build so a host API change fails
-// a nightly instead of a user. Kept small and out of `npm test`.
+// — refresh-in-place, deep-link cold load, basemap-switch survival — against
+// a real GeoLibre web build so a host API change fails a nightly instead of
+// a user. Kept small and out of `npm test`.
 //
-// Requires GEOLIBRE_URL to point at a running GeoLibre web app whose
-// plugin registry already contains this repo's just-built bundle (see
-// .github/workflows/e2e.yml, or run `npm run serve:geolibre` and point a
-// local GeoLibre dev checkout's VITE_GEOLIBRE_PLUGIN_REGISTRY_URL at it).
+// Selectors verified 2026-08-19 against a live GeoLibre dev server at
+// commit 5ce4d686 (real Chrome): the Layers panel lists the layer by its
+// registered name; the floating panel body is our own `.fg-*` DOM; the
+// basemap picker is a floating card behind the Layers-toolbar "Basemaps"
+// button; gauge dots are clicked by projecting lng/lat through the live
+// MapLibre map rather than guessing pixels.
 //
-// NOTE: the DOM selectors below (data-testid attributes, panel structure)
-// follow GeoLibre's documented plugin-panel conventions as of the plan's
-// research commit; they have not been run against a live GeoLibre build in
-// this environment. Treat a selector mismatch here as a signal to update
-// the selector, not the underlying assertion — the lead should run this
-// with GEOLIBRE_URL against a live dev server before trusting it in CI.
+// The plugin is installed by playwright.config.ts seeding the host's
+// `geolibre.desktopSettings` localStorage with this repo's manifest URL,
+// and activated by the `?flood-gauge=` URL parameter (the host
+// auto-activates a registered plugin that owns the parameter).
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const page1 = JSON.parse(readFileSync(join(__dirname, "fixtures/mapserver-page-1.json"), "utf8"));
 const page2 = JSON.parse(readFileSync(join(__dirname, "fixtures/mapserver-page-2.json"), "utf8"));
+
+const LAYER_NAME = "US Flood Gauges (NOAA)";
 
 const NWPS_STAGEFLOW = {
   observed: {
@@ -51,6 +53,17 @@ const NWPS_DETAIL = {
   status: { observed: { primary: 12.3, primaryUnit: "ft", floodCategory: "action" } },
 };
 
+interface ManagerWindow {
+  __floodGaugesManager?: {
+    ready: Promise<void>;
+    refreshNow: () => Promise<void>;
+    findGauge: (lid: string) => Promise<{
+      geometry: { coordinates: [number, number] };
+      properties: { status: string };
+    } | null>;
+  };
+}
+
 /** Stubs NOAA MapServer + NWPS so the run is deterministic. Swappable mid-test for refresh-in-place. */
 async function stubNoaa(page: Page, mapServerData: unknown): Promise<void> {
   await page.route("**/riv_gauges/MapServer/0/query**", (route: Route) =>
@@ -74,19 +87,33 @@ function consoleErrorCollector(page: Page): string[] {
   return errors;
 }
 
+/** Deep-link load: waits for plugin activation and the initial (stubbed) fetch. */
+async function loadWithDeepLink(page: Page): Promise<void> {
+  await page.goto("/?flood-gauge=PTTP1");
+  await page.waitForFunction(() => Boolean((window as ManagerWindow).__floodGaugesManager), null, {
+    timeout: 90_000,
+  });
+  await page.evaluate(() => (window as ManagerWindow).__floodGaugesManager!.ready);
+}
+
+/** Counts leaf DOM nodes whose full text is the layer name (Layers panel row + on-map layer control). */
+function layerEntryCount(page: Page, name: string): Promise<number> {
+  return page.evaluate((layerName) => {
+    return [...document.querySelectorAll("*")].filter(
+      (e) => e.childElementCount === 0 && e.textContent?.trim() === layerName,
+    ).length;
+  }, name);
+}
+
 test.describe("US Flood Gauges plugin (T4 smoke)", () => {
-  test("installs from the registry, activates, and renders the layer", async ({ page }) => {
+  test("installs from the manifest URL, activates via the deep link, and renders the layer", async ({
+    page,
+  }) => {
     const errors = consoleErrorCollector(page);
     await stubNoaa(page, page1);
 
-    await page.goto("/");
-    // Plugin install/activation is assumed pre-configured by the CI job's
-    // registry manifest (activeByDefault is explicitly false per plan —
-    // the workflow drives install+activate through the host UI or a
-    // documented dev-mode query param before this assertion).
-    await expect(page.getByTestId("layers-panel").getByText(/US Flood Gauges/i)).toBeVisible({
-      timeout: 15_000,
-    });
+    await loadWithDeepLink(page);
+    await expect(page.getByText(LAYER_NAME).first()).toBeVisible({ timeout: 30_000 });
 
     expect(errors).toEqual([]);
   });
@@ -97,15 +124,16 @@ test.describe("US Flood Gauges plugin (T4 smoke)", () => {
     const errors = consoleErrorCollector(page);
     await stubNoaa(page, page1);
 
-    await page.goto("/?flood-gauge=PTTP1");
+    await loadWithDeepLink(page);
 
-    const panel = page.getByTestId("flood-gauges-panel");
-    await expect(panel).toBeVisible({ timeout: 15_000 });
-    await expect(panel.getByText("PTTP1")).toBeVisible();
+    const panel = page.locator(".fg-panel");
+    await expect(panel).toBeVisible({ timeout: 30_000 });
+    await expect(panel.locator(".fg-lid")).toHaveText("PTTP1");
     await expect(panel.locator(".fg-badge")).toBeVisible();
     await expect(panel.locator(".fg-thresholds tr")).toHaveCount(4);
+    await expect(panel.locator(".fg-observed-value")).toBeVisible({ timeout: 30_000 });
     await expect(panel.locator(".fg-staleness")).toBeVisible();
-    await expect(panel.locator(".fg-hydrograph canvas")).toBeVisible();
+    await expect(panel.locator(".fg-hydrograph canvas")).toBeVisible({ timeout: 30_000 });
 
     const link = panel.locator(".fg-link");
     await expect(link).toHaveAttribute("href", /flood\.live\?gauge=PTTP1&ref=geolibre/);
@@ -116,21 +144,24 @@ test.describe("US Flood Gauges plugin (T4 smoke)", () => {
   test("refresh-in-place: one Layers entry, updated data, no remove/re-add flicker", async ({ page }) => {
     const errors = consoleErrorCollector(page);
     await stubNoaa(page, page1);
-    await page.goto("/?flood-gauge=PTTP1");
-    await expect(page.getByTestId("flood-gauges-panel")).toBeVisible({ timeout: 15_000 });
+    await loadWithDeepLink(page);
+    await expect(page.getByText(LAYER_NAME).first()).toBeVisible({ timeout: 30_000 });
 
-    const layersBefore = await page.getByTestId("layers-panel").getByText(/US Flood Gauges/i).count();
+    const layersBefore = await layerEntryCount(page, LAYER_NAME);
+    expect(layersBefore).toBeGreaterThanOrEqual(1);
 
     await stubNoaa(page, page2); // swap fixture: status flip + new obstime
-    await page.evaluate(() => {
-      // Exposed test hook (plan §5 T4): forces an immediate refresh cycle
-      // bypassing the 30-min interval.
-      const w = window as unknown as { __floodGaugesManager?: { refreshNow: () => Promise<void> } };
-      return w.__floodGaugesManager?.refreshNow();
-    });
+    await page.evaluate(() => (window as ManagerWindow).__floodGaugesManager!.refreshNow());
 
-    const layersAfter = await page.getByTestId("layers-panel").getByText(/US Flood Gauges/i).count();
+    // The refresh routed to updateLayer (same store id): entry count is
+    // unchanged and the gauge's status reflects the second fixture.
+    const layersAfter = await layerEntryCount(page, LAYER_NAME);
     expect(layersAfter).toBe(layersBefore);
+    const status = await page.evaluate(async () => {
+      const gauge = await (window as ManagerWindow).__floodGaugesManager!.findGauge("PTTP1");
+      return gauge?.properties.status;
+    });
+    expect(status).toBe("minor");
 
     expect(errors).toEqual([]);
   });
@@ -138,16 +169,33 @@ test.describe("US Flood Gauges plugin (T4 smoke)", () => {
   test("basemap switch preserves the layer and gauge clicks keep opening the panel", async ({ page }) => {
     const errors = consoleErrorCollector(page);
     await stubNoaa(page, page1);
-    await page.goto("/?flood-gauge=PTTP1");
-    await expect(page.getByTestId("flood-gauges-panel")).toBeVisible({ timeout: 15_000 });
+    await loadWithDeepLink(page);
+    await expect(page.getByText(LAYER_NAME).first()).toBeVisible({ timeout: 30_000 });
 
-    await page.getByTestId("basemap-switcher").click();
-    await page.getByTestId("basemap-option-satellite").click();
-    await expect(page.getByTestId("layers-panel").getByText(/US Flood Gauges/i)).toBeVisible();
+    // Basemap picker is a floating card toggled by the Layers-toolbar button.
+    await page.getByRole("button", { name: "Basemaps" }).first().click();
+    await page.getByText("OpenStreetMap Standard").first().click();
+    await page.getByRole("button", { name: "Basemaps" }).first().click(); // close the card
+    await page.waitForTimeout(5_000); // style.load + layer re-sync
 
-    // Re-click the (now re-synced) gauge dot to confirm handlers survived the resync.
-    await page.getByTestId("map-canvas").click({ position: { x: 400, y: 300 } });
-    await expect(page.getByTestId("flood-gauges-panel")).toBeVisible();
+    await expect(page.getByText(LAYER_NAME).first()).toBeVisible();
+
+    // Click the gauge dot by projecting its lng/lat through the live map —
+    // confirms the layer-scoped click handlers survived the style swap.
+    const pt = await page.evaluate(async () => {
+      const w = window as ManagerWindow & {
+        __floodGaugesManager?: { app?: unknown } & ManagerWindow["__floodGaugesManager"];
+      };
+      const manager = w.__floodGaugesManager as unknown as Record<string, unknown>;
+      const gauge = await (manager.findGauge as (lid: string) => Promise<{ geometry: { coordinates: [number, number] } }>)("PTTP1");
+      const app = manager["app"] as { getMap: () => { project: (c: [number, number]) => { x: number; y: number }; getCanvas: () => HTMLCanvasElement } };
+      const map = app.getMap();
+      const p = map.project(gauge.geometry.coordinates);
+      const rect = map.getCanvas().getBoundingClientRect();
+      return { x: rect.left + p.x, y: rect.top + p.y };
+    });
+    await page.mouse.click(pt.x, pt.y);
+    await expect(page.locator(".fg-lid")).toHaveText("PTTP1", { timeout: 15_000 });
 
     expect(errors).toEqual([]);
   });
@@ -158,11 +206,12 @@ test.describe("US Flood Gauges plugin at the minGeoLibreVersion floor (2.0.0)", 
   // CI-tested against a second pinned build, not aspirational. The
   // workflow (.github/workflows/e2e.yml) points GEOLIBRE_URL at a
   // separately built v2.0.0 checkout for this describe block.
-  test("installs, layer renders, click opens the panel", async ({ page }) => {
+  test("installs, layer renders, deep link opens the panel", async ({ page }) => {
     const errors = consoleErrorCollector(page);
     await stubNoaa(page, page1);
-    await page.goto("/?flood-gauge=PTTP1");
-    await expect(page.getByTestId("flood-gauges-panel")).toBeVisible({ timeout: 15_000 });
+    await loadWithDeepLink(page);
+    await expect(page.getByText(LAYER_NAME).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".fg-panel")).toBeVisible({ timeout: 30_000 });
     expect(errors).toEqual([]);
   });
 });
