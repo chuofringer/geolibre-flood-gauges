@@ -4,6 +4,7 @@
 // a fraction of the height, and it reads at a glance like flood.live's
 // color language.
 import { FLOOD_COLORS } from "../core/constants";
+import { isValidPrimary } from "../core/latestObserved";
 import type { SeriesThresholds } from "./series";
 
 const ZONE_ORDER = [
@@ -54,7 +55,9 @@ export function computeStageBarModel(
   if (defined.length === 0) return null;
 
   const values = defined.map((d) => d.value);
-  if (observed != null) values.push(observed);
+  // Sentinel (-999) must not stretch the scale or park a fake left-edge marker.
+  const validObserved = isValidPrimary(observed) ? observed : null;
+  if (validObserved != null) values.push(validObserved);
   const lo = Math.min(...values);
   const hi = Math.max(...values);
   const pad = 0.14 * (hi - lo || Math.abs(hi) || 1);
@@ -79,7 +82,7 @@ export function computeStageBarModel(
     max,
     zones,
     ticks: defined.map((d) => ({ value: d.value, pct: pct(d.value), color: d.color })),
-    markerPct: observed == null ? null : Math.min(98, Math.max(2, pct(observed))),
+    markerPct: validObserved == null ? null : Math.min(98, Math.max(2, pct(validObserved))),
   };
 }
 

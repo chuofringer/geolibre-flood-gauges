@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSeries } from "../src/panel/series";
+import { buildSeries, hasPlottableSeries } from "../src/panel/series";
 import type { StageFlowResponse } from "../src/core/types";
 
 const NOW = Date.parse("2026-08-19T12:00:00Z");
@@ -35,6 +35,7 @@ describe("buildSeries", () => {
     // 2 forecast points + 1 bridge point (duplicated boundary) = 3 non-null forecast entries,
     // but the bridge shares an x with the last observed point so it doesn't add a new column.
     expect(forecastCount).toBe(3);
+    expect(hasPlottableSeries(series)).toBe(true);
   });
 
   it("duplicates the boundary point into the forecast series (bridge)", () => {
@@ -103,6 +104,7 @@ describe("buildSeries", () => {
     expect(series.x).toHaveLength(0);
     expect(series.observed).toHaveLength(0);
     expect(series.forecast).toHaveLength(0);
+    expect(hasPlottableSeries(series)).toBe(false);
   });
 
   it("handles undefined stageflow gracefully", () => {

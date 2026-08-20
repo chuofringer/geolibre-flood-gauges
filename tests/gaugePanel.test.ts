@@ -7,9 +7,12 @@ import type { GaugeProperties } from "../src/core/types";
 // uPlot instance throws deep inside its rAF-driven _commit. The chart's own
 // mount/data logic isn't unit-tested here — that's covered by the browser
 // based T4 Playwright suite — so this suite stubs Hydrograph to a no-op.
+const { hydrographMount } = vi.hoisted(() => ({ hydrographMount: vi.fn() }));
 vi.mock("../src/panel/hydrograph", () => ({
   Hydrograph: class {
-    mount() {}
+    mount(...args: unknown[]) {
+      hydrographMount(...args);
+    }
     update() {}
     destroy() {}
   },
@@ -65,9 +68,61 @@ const stageflow = {
   forecast: { primaryUnits: "ft", data: [{ validTime: "2026-08-19T13:00:00Z", primary: 12.8, secondary: null }] },
 };
 
+
+const alekGauge: GaugeProperties = {
+  gaugelid: "ALEK1",
+  status: "obs_not_current",
+  location: "Abilene",
+  waterbody: "Mud Creek",
+  state: "KS",
+  observed: -999,
+  latitude: 38.92,
+  longitude: -97.21,
+  action: 11,
+  flood: 13,
+  moderate: 17,
+  major: 21,
+  units: "ft",
+  obstime: "2026-08-19T12:00:00Z",
+  wfo: "ICT",
+};
+
+const alekDetail = {
+  lid: "ALEK1",
+  name: "Abilene",
+  state: { abbreviation: "KS", name: "Kansas" },
+  county: "Dickinson",
+  latitude: 38.92,
+  longitude: -97.21,
+  flood: {
+    stageUnits: "ft",
+    categories: {
+      major: { stage: 21, flow: null },
+      moderate: { stage: 17, flow: null },
+      minor: { stage: 13, flow: null },
+      action: { stage: 11, flow: null },
+    },
+  },
+  status: { observed: { primary: -999, primaryUnit: "ft", floodCategory: "obs_not_current" } },
+};
+
+const alekStageflowSentinel = {
+  observed: {
+    primaryUnits: "ft",
+    data: [{ validTime: "2026-08-19T11:00:00Z", primary: -999, secondary: null }],
+  },
+  forecast: { primaryUnits: "ft", data: [] },
+};
+
+async function flushPanel(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe("gaugePanel", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    hydrographMount.mockClear();
   });
 
   it("registerPanel renders an empty-state placeholder", () => {
@@ -155,5 +210,69 @@ describe("gaugePanel", () => {
     link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     expect(host.openedUrls[0]).toContain("gauge=PTTP1");
     expect(host.openedUrls[0]).toContain("ref=geolibre");
+  });
+
+  it("NWPS -999 primary fallback: Observed is an em dash, no stage-bar marker", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("stageflow")) return new Response(JSON.stringify(alekStageflowSentinel), { status: 200 });
+        return new Response(JSON.stringify(alekDetail), { status: 200 });
+      }),
+    );
+    const host = new FakeHost();
+    registerPanel(host.app);
+    openGaugePanel(host.app, alekGauge);
+    const panel = host.panels.get(PANEL_ID)!;
+    const container = document.createElement("div");
+    panel.render(container);
+    await flushPanel();
+
+    const observed = container.querySelector(".fg-observed-row")?.textContent ?? "";
+    expect(observed).toMatch(/Observed:\s*[–—-]/);
+    expect(observed).not.toContain("-999");
+    expect(container.textContent).not.toContain("-999");
+    expect(container.querySelector(".fg-observed-value")).toBeNull();
+
+    // Thresholds-only bar is OK; a marker at a fake left-edge position is not.
+    expect(container.querySelector(".fg-stagebar-track")).not.toBeNull();
+    expect(container.querySelector(".fg-stagebar-marker")).toBeNull();
+
+    expect(container.querySelector(".fg-staleness")?.textContent).toContain(
+      "No recent observation available. · Data: NOAA/NWPS",
+    );
+
+    expect(hydrographMount).toHaveBeenCalled();
+    const series = hydrographMount.mock.calls[0][1] as { x: unknown[] };
+    expect(series.x).toHaveLength(0);
+  });
+
+  it("valid NWPS primary still fills Observed when stageflow has no valid point", async () => {
+    const validFallbackDetail = {
+      ...alekDetail,
+      lid: "VALK1",
+      status: { observed: { primary: 12.3, primaryUnit: "ft", floodCategory: "action" } },
+    };
+    const emptyStageflow = {
+      observed: { primaryUnits: "ft", data: [] },
+      forecast: { primaryUnits: "ft", data: [] },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("stageflow")) return new Response(JSON.stringify(emptyStageflow), { status: 200 });
+        return new Response(JSON.stringify(validFallbackDetail), { status: 200 });
+      }),
+    );
+    const host = new FakeHost();
+    registerPanel(host.app);
+    openGaugePanel(host.app, { ...alekGauge, gaugelid: "VALK1" });
+    const panel = host.panels.get(PANEL_ID)!;
+    const container = document.createElement("div");
+    panel.render(container);
+    await flushPanel();
+
+    expect(container.querySelector(".fg-observed-value")?.textContent).toMatch(/12\.3/);
+    expect(container.querySelector(".fg-stagebar-marker")).not.toBeNull();
   });
 });

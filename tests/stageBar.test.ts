@@ -33,11 +33,23 @@ describe("computeStageBarModel", () => {
     expect(m.ticks).toHaveLength(1);
   });
 
-  it("clamps an out-of-range observed marker into the visible band", () => {
-    const low = computeStageBarModel(FULL, -1000)!;
+  it("clamps an out-of-range (but valid) observed marker into the visible band", () => {
+    // Negative stages below datum are real; -1000 is a NOAA sentinel, not a clamp case.
+    const low = computeStageBarModel(FULL, -5)!;
     expect(low.markerPct!).toBeGreaterThanOrEqual(2);
     const high = computeStageBarModel(FULL, 9000)!;
     expect(high.markerPct!).toBeLessThanOrEqual(98);
+  });
+
+  it("NOAA sentinel observed (-999 / -9999) → no marker; thresholds-only scale", () => {
+    const a = computeStageBarModel(FULL, -999)!;
+    expect(a.markerPct).toBeNull();
+    expect(a.zones).toHaveLength(5);
+    // Sentinel must not pull min out to -999 (that parks a fake left-edge marker).
+    expect(a.min).toBeGreaterThan(-100);
+    const b = computeStageBarModel(FULL, -9999)!;
+    expect(b.markerPct).toBeNull();
+    expect(b.min).toBeGreaterThan(-100);
   });
 
   it("no observation → no marker, zones still render", () => {
