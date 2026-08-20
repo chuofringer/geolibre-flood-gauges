@@ -1,0 +1,48 @@
+{
+  "type": "FeatureCollection",
+  "exceededTransferLimit": false,
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-91.234, 38.765] },
+      "properties": {
+        "gaugelid": "PTTP1",
+        "status": "Action",
+        "location": "Pittsburgh",
+        "waterbody": "Allegheny River",
+        "state": "PA",
+        "observed": 12.3,
+        "latitude": 38.765,
+        "longitude": -91.234,
+        "action": 10,
+        "flood": 15,
+        "moderate": 20,
+        "major": 25,
+        "units": "ft",
+        "obstime": "2026-08-19T12:00:00Z",
+        "wfo": "PBZ"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-95.1, 29.9] },
+      "properties": {
+        "gaugelid": "HOUT2",
+        "status": "no flooding",
+        "location": "Houston",
+        "waterbody": "Buffalo Bayou",
+        "state": "TX",
+        "observed": 1.2,
+        "latitude": 29.9,
+        "longitude": -95.1,
+        "action": 5,
+        "flood": 8,
+        "moderate": 12,
+        "major": 16,
+        "units": "ft",
+        "obstime": "2026-08-19T11:45:00Z",
+        "wfo": "HGX"
+      }
+    }
+  ]
+}

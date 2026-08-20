@@ -1,0 +1,40 @@
+{
+  "name": "geolibre-flood-gauges",
+  "version": "0.1.0",
+  "description": "Live US flood gauge layer from NOAA/NWPS with flood-category symbology, hydrographs, and deep links, for GeoLibre. By the makers of flood.live.",
+  "type": "module",
+  "private": true,
+  "author": "Zhuo Liu (https://vibemapper.dev)",
+  "license": "MIT",
+  "homepage": "https://flood.live",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chuofringer/geolibre-flood-gauges.git"
+  },
+  "scripts": {
+    "build:geolibre": "vite build --config vite.geolibre.config.ts",
+    "package:geolibre": "npm run build:geolibre && node scripts/package-geolibre-plugin.mjs",
+    "serve:geolibre": "node scripts/serve-geolibre-plugin.mjs",
+    "test": "vitest --run",
+    "test:e2e": "playwright test",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "canary": "node scripts/noaa-canary.mjs",
+    "validate:plugin": "node scripts/validate-plugin.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.55.1",
+    "@types/node": "^26.2.0",
+    "eslint": "^10.4.1",
+    "globals": "^17.6.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.60.1",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "uplot": "^1.6.32"
+  }
+}

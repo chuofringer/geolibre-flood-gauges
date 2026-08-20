@@ -1,0 +1,36 @@
+name: NOAA canary
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 13 * * 1" # weekly, Monday
+
+permissions:
+  issues: write
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run the live NOAA canary
+        id: canary
+        run: node scripts/noaa-canary.mjs
+
+      - name: Open an issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "NOAA canary failed on $(date -u +%Y-%m-%d)" \
+            --body "The scheduled NOAA canary (\`scripts/noaa-canary.mjs\`) failed. See the run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --label "canary,noaa-drift"

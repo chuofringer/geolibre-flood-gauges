@@ -1,0 +1,154 @@
+/* All selectors are .fg- prefixed: plugin `style` is injected globally into
+   the host page, so nothing here may leak into host or other-plugin DOM. */
+
+.fg-panel {
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 4px 2px;
+}
+
+.fg-muted {
+  color: hsl(var(--muted-foreground));
+}
+
+.fg-header {
+  margin-bottom: 8px;
+}
+
+.fg-lid-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.fg-lid {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.fg-location {
+  margin: 2px 0 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.fg-badge-row {
+  margin-top: 6px;
+}
+
+.fg-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #000;
+}
+
+.fg-thresholds {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0;
+}
+
+.fg-thresholds td {
+  padding: 3px 4px;
+  border-bottom: 1px solid hsl(var(--border));
+  font-variant-numeric: tabular-nums;
+}
+
+.fg-threshold-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fg-chip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+
+.fg-threshold-value {
+  text-align: right;
+}
+
+.fg-threshold-value.fg-observed {
+  font-weight: 700;
+}
+
+.fg-observed-row {
+  margin: 6px 0 2px;
+  font-size: 13px;
+}
+
+.fg-observed-value {
+  font-weight: 700;
+}
+
+.fg-trend-rising {
+  color: #dc2626;
+}
+
+.fg-trend-falling {
+  color: #2563eb;
+}
+
+.fg-trend-stable {
+  color: hsl(var(--muted-foreground));
+}
+
+.fg-staleness {
+  margin: 4px 0 2px;
+}
+
+.fg-staleness.fg-amber {
+  color: #d97706;
+}
+
+.fg-staleness.fg-stale-red {
+  color: #dc2626;
+}
+
+.fg-provenance {
+  margin: 0 0 8px;
+  font-size: 11px;
+}
+
+.fg-hydrograph {
+  margin: 6px 0;
+  min-height: 180px;
+}
+
+.fg-footer {
+  margin: 8px 0 0;
+  text-align: right;
+}
+
+.fg-link {
+  color: hsl(var(--foreground));
+  text-decoration: underline;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dark .fg-badge {
+  color: #000;
+}
+
+.dark .fg-staleness.fg-amber {
+  color: #fbbf24;
+}
+
+.dark .fg-staleness.fg-stale-red {
+  color: #f87171;
+}
