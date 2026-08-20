@@ -216,7 +216,7 @@ describe("GaugeLayerManager", () => {
     manager.stop();
   });
 
-  it("hex click is a no-op when the map lacks easeTo/getZoom", async () => {
+  it("hex click falls back to ring-extent fitBounds when easeTo/getZoom are missing", async () => {
     stubFetchOnce(collection([gauge()]));
     const manager = new GaugeLayerManager(host.app, vi.fn());
     void manager.start();
@@ -244,8 +244,8 @@ describe("GaugeLayerManager", () => {
       ],
     });
 
-    expect(host.fitBoundsCalls).toHaveLength(0);
     expect(map.easeToCalls).toHaveLength(0);
+    expect(host.fitBoundsCalls).toEqual([[-92, 37, -90, 39]]);
 
     manager.stop();
   });

@@ -305,8 +305,9 @@ export class GaugeLayerManager {
 
   /**
    * Hex click = zoom-in, not select (flood.live FloodMap.tsx).
-   * easeTo the cell centroid at currentZoom + 2 — fitBounds on a res-3
-   * cell slammed national (~2) straight to the gauge-dot threshold (~7.7).
+   * Primary: easeTo the cell centroid at currentZoom + 2. Fallback: the
+   * previous ring-extent fitBounds when getZoom/easeTo are unavailable
+   * (older hosts) — do not no-op.
    */
   private handleHexClick(e: MapMouseEventLike): void {
     const geometry = e.features?.[0]?.geometry;
@@ -314,13 +315,26 @@ export class GaugeLayerManager {
     const ring = (geometry.coordinates as [number, number][][])[0];
     if (!ring?.length) return;
     const map = this.app.getMap?.();
-    if (!map?.getZoom || !map.easeTo) return;
-    const centerLng = ring.reduce((sum, c) => sum + c[0], 0) / ring.length;
-    const centerLat = ring.reduce((sum, c) => sum + c[1], 0) / ring.length;
-    map.easeTo({
-      center: [centerLng, centerLat],
-      zoom: map.getZoom() + 2,
-    });
+    if (map?.getZoom && map.easeTo) {
+      const centerLng = ring.reduce((sum, c) => sum + c[0], 0) / ring.length;
+      const centerLat = ring.reduce((sum, c) => sum + c[1], 0) / ring.length;
+      map.easeTo({
+        center: [centerLng, centerLat],
+        zoom: map.getZoom() + 2,
+      });
+      return;
+    }
+    let minLng = Infinity;
+    let minLat = Infinity;
+    let maxLng = -Infinity;
+    let maxLat = -Infinity;
+    for (const [lng, lat] of ring) {
+      if (lng < minLng) minLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lng > maxLng) maxLng = lng;
+      if (lat > maxLat) maxLat = lat;
+    }
+    this.app.fitBounds?.([minLng, minLat, maxLng, maxLat]);
   }
 }
 
