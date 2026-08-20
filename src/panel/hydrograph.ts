@@ -24,20 +24,28 @@ function hostIsDark(): boolean {
  * forecast dashed (future-only, bridged), 4 threshold horizontal lines.
  * The built-in legend is off — it burned three lines on "--" placeholders;
  * a single-line hover readout under the chart replaces it. Axis labels use
- * explicit light/dark colors (not the faint grid stroke). Trimmed v1 subset of flood.live's
- * StageFlowChart.tsx — no range selector, zoom slider, "Now" markline, or
- * rainfall annotation.
+ * explicit light/dark colors and remount when the host toggles `.dark`
+ * (uPlot paints on canvas, so CSS cannot restyle ticks). Trimmed v1 subset
+ * of flood.live's StageFlowChart.tsx — no range selector, zoom slider,
+ * "Now" markline, or rainfall annotation.
  */
 export class Hydrograph {
   private plot: uPlot | null = null;
   private readout: HTMLElement | null = null;
   private units = "";
+  private themeObserver: MutationObserver | null = null;
+  private last: { container: HTMLElement; series: BuiltSeries; units: string; dark: boolean } | null =
+    null;
 
   mount(container: HTMLElement, series: BuiltSeries, units = ""): void {
-    this.destroy();
+    this.teardownPlot();
     this.units = units;
     // Empty/sentinel series must not leave a blank 170px uPlot canvas.
-    if (!hasPlottableSeries(series)) return;
+    if (!hasPlottableSeries(series)) {
+      this.last = null;
+      this.unwatchTheme();
+      return;
+    }
 
     const thresholdSeries = (["action", "minor", "moderate", "major"] as const).map((key) => ({
       label: key,
@@ -52,13 +60,12 @@ export class Hydrograph {
       ...thresholdSeries.map((t) => series.x.map(() => t.value)),
     ];
 
-    // Explicit label colors, not computed/muted foreground — dark-theme
-    // axis ticks were unreadable when they inherited the 0.18 grid gray.
-    const theme = axisTheme(hostIsDark());
+    const dark = hostIsDark();
+    const theme = axisTheme(dark);
 
     const readout = document.createElement("div");
     readout.className = "fg-chart-readout";
-    readout.textContent = " "; // reserve the line so hover doesn't shift layout
+    readout.textContent = "\u00a0";
     this.readout = readout;
 
     const opts: uPlot.Options = {
@@ -72,7 +79,7 @@ export class Hydrograph {
           (u) => {
             const idx = u.cursor.idx;
             if (idx == null) {
-              readout.textContent = " ";
+              readout.textContent = "\u00a0";
               return;
             }
             const t = u.data[0][idx];
@@ -80,7 +87,7 @@ export class Hydrograph {
             const forecast = u.data[2][idx];
             const value = observed ?? forecast;
             if (value == null || t == null) {
-              readout.textContent = " ";
+              readout.textContent = "\u00a0";
               return;
             }
             const kind = observed != null ? "Observed" : "Forecast";
@@ -130,8 +137,6 @@ export class Hydrograph {
           grid: { stroke: theme.grid, width: 1 },
           ticks: { stroke: theme.label, width: 1 },
           font: "11px system-ui",
-          // Tick labels carry the stage unit ("2 ft"), so the axis needs no
-          // separate rotated label; widen to fit the suffix.
           size: units ? 46 : 36,
           values: (_u: uPlot, vals: number[]) =>
             vals.map((v) => (v == null ? "" : units ? `${v} ${units}` : `${v}`)),
@@ -141,9 +146,12 @@ export class Hydrograph {
 
     this.plot = new uPlot(opts, data, container);
     container.appendChild(readout);
+    this.last = { container, series, units, dark };
+    this.watchTheme();
   }
 
   update(series: BuiltSeries): void {
+    if (this.last) this.last.series = series;
     if (!this.plot) return;
     const thresholdSeries = (["action", "minor", "moderate", "major"] as const).map(
       (key) => series.thresholds[key],
@@ -158,9 +166,36 @@ export class Hydrograph {
   }
 
   destroy(): void {
+    this.unwatchTheme();
+    this.teardownPlot();
+    this.last = null;
+  }
+
+  private teardownPlot(): void {
     this.plot?.destroy();
     this.plot = null;
     this.readout?.remove();
     this.readout = null;
+  }
+
+  private watchTheme(): void {
+    if (this.themeObserver) return;
+    this.themeObserver = new MutationObserver(() => {
+      const last = this.last;
+      if (!last) return;
+      const dark = hostIsDark();
+      if (dark === last.dark) return;
+      last.dark = dark;
+      this.mount(last.container, last.series, last.units);
+    });
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+  }
+
+  private unwatchTheme(): void {
+    this.themeObserver?.disconnect();
+    this.themeObserver = null;
   }
 }
