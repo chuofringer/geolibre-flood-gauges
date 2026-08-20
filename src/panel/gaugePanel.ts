@@ -50,7 +50,8 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-const SOURCE_LINE = "Source: NOAA/NWPS (api.water.noaa.gov) · MapServer every 30 min";
+const SOURCE_LINE =
+  "Source: NOAA/NWPS river and coastal gauges (api.water.noaa.gov) · MapServer every 30 min";
 const DISCLAIMER_LINE =
   "Not for life-safety decisions. This gauge is not your house. Follow official NOAA and local emergency guidance.";
 

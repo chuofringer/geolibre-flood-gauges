@@ -79,6 +79,7 @@ describe("gaugePanel", () => {
     panel.render(container);
     expect(container.textContent).toMatch(/Select a gauge/);
     expect(container.querySelector(".fg-source")?.textContent).toContain("NOAA/NWPS");
+    expect(container.querySelector(".fg-source")?.textContent).toContain("river and coastal");
     expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/life-safety/);
     expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/not your house/i);
   });
@@ -108,6 +109,7 @@ describe("gaugePanel", () => {
     expect(container.querySelector(".fg-staleness")?.textContent).not.toMatch(/Loading/);
     expect(container.querySelector(".fg-staleness")?.textContent).toContain("Data: NOAA/NWPS");
     expect(container.querySelector(".fg-source")?.textContent).toContain("NOAA/NWPS");
+    expect(container.querySelector(".fg-source")?.textContent).toContain("river and coastal");
     expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/life-safety/);
     expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/not your house/i);
     expect(container.querySelector(".fg-link")?.getAttribute("href")).toBe(
