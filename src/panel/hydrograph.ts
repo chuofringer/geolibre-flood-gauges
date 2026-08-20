@@ -117,7 +117,11 @@ export class Hydrograph {
           grid: { stroke: GRID_COLOR, width: 1 },
           ticks: { stroke: GRID_COLOR, width: 1 },
           font: "10px system-ui",
-          size: 36,
+          // Tick labels carry the stage unit ("2 ft"), so the axis needs no
+          // separate rotated label; widen to fit the suffix.
+          size: units ? 46 : 36,
+          values: (_u: uPlot, vals: number[]) =>
+            vals.map((v) => (v == null ? "" : units ? `${v} ${units}` : `${v}`)),
         },
       ],
     };

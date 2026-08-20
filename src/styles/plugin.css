@@ -43,8 +43,12 @@
   color: hsl(var(--muted-foreground));
 }
 
-.fg-badge-row {
+.fg-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 8px;
+  font-size: 12px;
 }
 
 .fg-badge {
@@ -53,11 +57,24 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  color: #000;
+}
+
+.fg-age {
+  font-variant-numeric: tabular-nums;
+}
+
+.fg-age.fg-amber {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.fg-age.fg-stale-red {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .fg-observed-row {
-  margin: 8px 0 4px;
+  margin: 10px 0 6px;
   font-size: 13px;
 }
 
@@ -79,50 +96,55 @@
   color: hsl(var(--muted-foreground));
 }
 
-.fg-thresholds {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 6px 0 8px;
+/* ── Stage bar: colored category zones + observed marker ─────────────── */
+
+.fg-stagebar {
+  margin: 2px 0 4px;
 }
 
-.fg-thresholds td {
-  padding: 4px 6px;
-  border-bottom: 1px solid hsl(var(--border));
+.fg-stagebar-track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: hsl(var(--border));
+}
+
+.fg-stagebar-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.fg-stagebar-marker {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 3px;
+  transform: translateX(-50%);
+  background: hsl(var(--foreground));
+  outline: 1.5px solid hsl(var(--card));
+  border-radius: 1px;
+}
+
+.fg-stagebar-ticks {
+  position: relative;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.fg-stagebar-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
   font-variant-numeric: tabular-nums;
 }
 
-.fg-thresholds tr:last-child td {
-  border-bottom: none;
-}
-
-.fg-threshold-label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.fg-chip {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  flex: none;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
-}
-
-.fg-threshold-value {
-  text-align: right;
-  color: hsl(var(--muted-foreground));
-}
-
-.fg-threshold-value.fg-observed {
-  font-weight: 700;
-  color: hsl(var(--foreground));
-}
-
 .fg-staleness {
-  margin: 6px 0 2px;
-  font-size: 12px;
+  margin: 4px 0 2px;
+  font-size: 11px;
   color: hsl(var(--muted-foreground));
 }
 
@@ -134,11 +156,6 @@
 .fg-staleness.fg-stale-red {
   color: #dc2626;
   font-weight: 600;
-}
-
-.fg-provenance {
-  margin: 0 0 8px;
-  font-size: 11px;
 }
 
 .fg-hydrograph {
@@ -192,15 +209,13 @@
 
 /* ── Dark theme (host toggles `.dark` on <html>) ───────────────────────── */
 
-.dark .fg-badge {
-  color: #000;
-}
-
-.dark .fg-staleness.fg-amber {
+.dark .fg-staleness.fg-amber,
+.dark .fg-age.fg-amber {
   color: #fbbf24;
 }
 
-.dark .fg-staleness.fg-stale-red {
+.dark .fg-staleness.fg-stale-red,
+.dark .fg-age.fg-stale-red {
   color: #f87171;
 }
 
@@ -210,10 +225,6 @@
 
 .dark .fg-trend-falling {
   color: #60a5fa;
-}
-
-.dark .fg-chip {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .dark .fg-link {

@@ -103,7 +103,7 @@ describe("gaugePanel", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(container.querySelector(".fg-staleness")?.textContent).not.toMatch(/Loading/);
-    expect(container.querySelector(".fg-provenance")?.textContent).toContain("NOAA/NWPS");
+    expect(container.querySelector(".fg-staleness")?.textContent).toContain("Data: NOAA/NWPS");
     expect(container.querySelector(".fg-link")?.getAttribute("href")).toBe(
       "https://flood.live?gauge=PTTP1&ref=geolibre",
     );
