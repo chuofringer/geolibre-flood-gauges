@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { GaugeLayerManager, HEX_LAYERS, LAYER_ID, NATIVE_ID, HIT_ID, computeDigest } from "../src/layer";
 import { GAUGE_CIRCLE_RADIUS, GAUGE_HIT_RADIUS, gaugeHitLayerPaint, gaugeLayerStyle } from "../src/style";
+import { FETCH_TIMEOUT_MS } from "../src/core/constants";
 import { FakeHost } from "./support/fakeHost";
 import type { GaugeGeoJSON, GaugeFeature } from "../src/core/types";
 
@@ -80,6 +81,8 @@ describe("GaugeLayerManager", () => {
 
   afterEach(() => {
     host.dispose();
+    document.querySelectorAll(".fg-status").forEach((el) => el.remove());
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -322,10 +325,91 @@ describe("GaugeLayerManager", () => {
     await expect(startPromise).resolves.toBeUndefined();
     expect(host.layers.size).toBe(0);
     expect(errSpy).toHaveBeenCalled();
+    expect(manager.getLoadState()).toBe("error");
+    expect(document.querySelector(".fg-status")?.textContent).toMatch(/Unable to reach NOAA/);
 
     stubFetchOnce(collection([gauge()]));
     await manager.refreshNow();
     expect(host.layers.size).toBe(3);
+    expect(manager.getLoadState()).toBe("ok");
+    expect(document.querySelector(".fg-status")).toBeNull();
+
+    manager.stop();
+  });
+
+  it("shows a loading chip while the first fetch is in flight", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        await gate;
+        return new Response(JSON.stringify(collection([gauge()])), { status: 200 });
+      }),
+    );
+    const manager = new GaugeLayerManager(host.app, vi.fn());
+    const startPromise = manager.start();
+    expect(manager.getLoadState()).toBe("loading");
+    expect(document.querySelector(".fg-status")?.textContent).toMatch(/Loading gauges/);
+
+    release();
+    await startPromise;
+    expect(manager.getLoadState()).toBe("ok");
+    expect(document.querySelector(".fg-status")).toBeNull();
+
+    manager.stop();
+    expect(document.querySelector(".fg-status")).toBeNull();
+  });
+
+  it("times out a hung fetch so inFlight cannot stick, then retry works", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        });
+      }),
+    );
+    const manager = new GaugeLayerManager(host.app, vi.fn());
+    const startPromise = manager.start();
+    expect(manager.getLoadState()).toBe("loading");
+    await vi.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
+    await startPromise;
+    expect(manager.getLoadState()).toBe("error");
+    expect(errSpy).toHaveBeenCalled();
+    expect(host.layers.size).toBe(0);
+    expect(document.querySelector(".fg-status")?.textContent).toMatch(/Unable to reach NOAA/);
+
+    vi.useRealTimers();
+    stubFetchOnce(collection([gauge()]));
+    await manager.refreshNow();
+    expect(host.layers.size).toBe(3);
+    expect(manager.getLoadState()).toBe("ok");
+    expect(document.querySelector(".fg-status")).toBeNull();
+
+    manager.stop();
+  });
+
+  it("retry button on a failed first fetch registers layers", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("boom", { status: 500 })));
+    const manager = new GaugeLayerManager(host.app, vi.fn());
+    await manager.start();
+    expect(manager.getLoadState()).toBe("error");
+
+    stubFetchOnce(collection([gauge()]));
+    const retry = document.querySelector<HTMLButtonElement>(".fg-status-retry");
+    expect(retry).toBeTruthy();
+    retry!.click();
+    await vi.waitFor(() => expect(host.layers.size).toBe(3));
+    expect(manager.getLoadState()).toBe("ok");
+    expect(document.querySelector(".fg-status")).toBeNull();
 
     manager.stop();
   });

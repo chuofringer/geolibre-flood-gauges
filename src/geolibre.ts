@@ -45,7 +45,7 @@ export const plugin: GeoLibrePlugin = {
       openGaugePanel(app, properties);
     });
     // Fire-and-forget: a failed first fetch logs, keeps the interval, and
-    // retries next tick — never an unhandled rejection, never a dead plugin.
+    // surfaces retry on the map chip — never an unhandled rejection.
     void manager.start();
     registerPanel(app);
 
