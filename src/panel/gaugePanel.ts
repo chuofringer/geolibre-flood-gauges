@@ -50,6 +50,19 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+const SOURCE_LINE =
+  "Source: NOAA/NWPS river and coastal gauges (api.water.noaa.gov) · MapServer every 30 min";
+const DISCLAIMER_LINE =
+  "For informational purposes only. Not for life-safety decisions. Follow official NOAA and local emergency guidance.";
+
+/** Always-visible NOAA attribution + life-safety line. Empty state and loaded panel share this. */
+function appendHonesty(parent: HTMLElement): void {
+  const box = el("div", "fg-honesty");
+  box.appendChild(el("p", "fg-source", SOURCE_LINE));
+  box.appendChild(el("p", "fg-disclaimer", DISCLAIMER_LINE));
+  parent.appendChild(box);
+}
+
 /** Registers the panel once (activate-time), with a placeholder body. */
 export function registerPanel(app: GeoLibreAppAPI): void {
   app.registerFloatingPanel?.({
@@ -64,6 +77,7 @@ export function registerPanel(app: GeoLibreAppAPI): void {
 function renderEmptyState(container: HTMLElement): void {
   container.classList.add("fg-panel");
   container.appendChild(el("p", "fg-muted", "Select a gauge on the map to see details."));
+  appendHonesty(container);
 }
 
 /**
@@ -154,7 +168,8 @@ function renderGaugePanel(
   const hydrographContainer = el("div", "fg-hydrograph");
   const hydrograph = new Hydrograph();
 
-  const footer = el("p", "fg-footer");
+  const footer = el("div", "fg-footer");
+  appendHonesty(footer);
   const link = el("a", "fg-link", "Open on flood.live");
   link.href = `https://flood.live?gauge=${encodeURIComponent(gauge.gaugelid)}&ref=geolibre`;
   link.addEventListener("click", (e) => {

@@ -10,6 +10,12 @@ symbology, per-gauge hydrographs, and shareable deep links. Want alerts
 when a gauge near you rises? That's what
 [flood.live](https://flood.live) does.
 
+> **Source:** NOAA/NWPS river and coastal gauges (`api.water.noaa.gov`) ·
+> MapServer every 30 min.
+>
+> **For informational purposes only.** Not for life-safety decisions.
+> Follow official NOAA and local emergency guidance.
+
 At low zoom the map shows an **H3 flood overview** (ported from
 flood.live's hex presentation): only regions with active flood
 conditions light up, colored by the worst gauge status in each cell —
@@ -27,12 +33,13 @@ noting any deviation.
 
 ## Data & provenance
 
-- Gauge points and current status: NOAA MapServer
-  (`mapservices.weather.noaa.gov`), refreshed every 30 minutes.
-- Thresholds, gauge detail, and stage/flow history: NOAA/NWPS
-  (`api.water.noaa.gov`), fetched when you open a gauge's panel.
-- **This is not for life-safety decisions.** Always follow official NOAA
-  and local emergency management guidance during an active flood event.
+- **Source:** NOAA/NWPS river and coastal gauges. Gauge points and
+  current status: NOAA MapServer (`mapservices.weather.noaa.gov`),
+  refreshed every 30 minutes. Thresholds and hydrographs:
+  `api.water.noaa.gov`.
+- **For informational purposes only.** Not for life-safety decisions.
+  Follow official NOAA and local emergency guidance. The same lines
+  are on the gauge panel.
 
 ## Install
 
