@@ -332,6 +332,7 @@ describe("GaugeLayerManager", () => {
     await manager.refreshNow();
     expect(host.layers.size).toBe(3);
     expect(manager.getLoadState()).toBe("ok");
+    expect(document.querySelector(".fg-status")).toBeNull();
 
     manager.stop();
   });
@@ -356,7 +357,7 @@ describe("GaugeLayerManager", () => {
     release();
     await startPromise;
     expect(manager.getLoadState()).toBe("ok");
-    expect(document.querySelector(".fg-status")?.textContent).toMatch(/\d{2}:\d{2}/);
+    expect(document.querySelector(".fg-status")).toBeNull();
 
     manager.stop();
     expect(document.querySelector(".fg-status")).toBeNull();
@@ -390,6 +391,7 @@ describe("GaugeLayerManager", () => {
     await manager.refreshNow();
     expect(host.layers.size).toBe(3);
     expect(manager.getLoadState()).toBe("ok");
+    expect(document.querySelector(".fg-status")).toBeNull();
 
     manager.stop();
   });
@@ -407,6 +409,7 @@ describe("GaugeLayerManager", () => {
     retry!.click();
     await vi.waitFor(() => expect(host.layers.size).toBe(3));
     expect(manager.getLoadState()).toBe("ok");
+    expect(document.querySelector(".fg-status")).toBeNull();
 
     manager.stop();
   });

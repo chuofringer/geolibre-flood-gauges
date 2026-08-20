@@ -320,11 +320,6 @@
     transform: rotate(360deg);
   }
 }
-
-.fg-status-time {
-  font-variant-numeric: tabular-nums;
-}
-
 .fg-status-retry {
   margin-left: 2px;
   padding: 2px 8px;
@@ -336,12 +331,6 @@
   color: inherit;
   background: rgba(255, 255, 255, 0.18);
 }
-
-.fg-status[data-state="ok"] .fg-status-retry {
-  background: transparent;
-  padding: 2px 6px;
-}
-
 .dark .fg-status[data-state="error"] {
   background: #92400e;
   color: #fde68a;
@@ -349,8 +338,4 @@
 
 .dark .fg-status-retry {
   background: rgba(0, 0, 0, 0.22);
-}
-
-.dark .fg-status[data-state="ok"] .fg-status-retry {
-  background: transparent;
 }

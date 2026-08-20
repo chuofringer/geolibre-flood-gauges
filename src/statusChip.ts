@@ -1,6 +1,7 @@
-/** Map-visible load/retry chrome. Ports flood.live StatusBar behavior
- * (last-updated, spinner, NOAA-fail + retry) into the plugin's .fg- DOM.
- * Not a second data pipeline — the layer manager still owns the fetch.
+/** Map-visible load/retry chrome. Ports the flood.live StatusBar *states*
+ * that matter here (spinner, NOAA-fail + retry) — not the permanent clock.
+ * Hidden when NOAA is healthy so it does not sit on GeoLibre's viewport
+ * (or linger after the user hides the layer). Not a second data pipeline.
  */
 
 export type LoadState = "loading" | "ok" | "error";
@@ -8,7 +9,6 @@ export type LoadState = "loading" | "ok" | "error";
 export interface StatusChipView {
   state: LoadState;
   hasData: boolean;
-  lastOkAt: number | null;
   onRetry: () => void;
 }
 
@@ -25,6 +25,10 @@ export class StatusChip {
   }
 
   render(view: StatusChipView): void {
+    if (view.state === "ok") {
+      this.unmount();
+      return;
+    }
     if (!this.root) this.mount();
     const el = this.root;
     if (!el) return;
@@ -32,6 +36,7 @@ export class StatusChip {
 
     if (view.state === "loading") {
       el.dataset.state = "loading";
+      el.removeAttribute("role");
       const spin = document.createElement("span");
       spin.className = "fg-status-spinner";
       spin.setAttribute("aria-hidden", "true");
@@ -41,23 +46,13 @@ export class StatusChip {
       return;
     }
 
-    if (view.state === "error") {
-      el.dataset.state = "error";
-      el.setAttribute("role", "alert");
-      const label = document.createElement("span");
-      label.textContent = view.hasData
-        ? "Unable to reach NOAA. Showing last load."
-        : "Unable to reach NOAA.";
-      el.append(label, retryButton(view.onRetry));
-      return;
-    }
-
-    el.removeAttribute("role");
-    el.dataset.state = "ok";
-    const time = document.createElement("span");
-    time.className = "fg-status-time";
-    time.textContent = formatClock(view.lastOkAt);
-    el.append(time, retryButton(view.onRetry, "Refresh gauge data"));
+    el.dataset.state = "error";
+    el.setAttribute("role", "alert");
+    const label = document.createElement("span");
+    label.textContent = view.hasData
+      ? "Unable to reach NOAA. Showing last load."
+      : "Unable to reach NOAA.";
+    el.append(label, retryButton(view.onRetry));
   }
 
   unmount(): void {
@@ -66,21 +61,12 @@ export class StatusChip {
   }
 }
 
-function retryButton(onRetry: () => void, label = "Retry"): HTMLButtonElement {
+function retryButton(onRetry: () => void): HTMLButtonElement {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "fg-status-retry";
-  btn.textContent = label === "Retry" ? "Retry" : "↻";
-  btn.setAttribute("aria-label", label);
+  btn.textContent = "Retry";
+  btn.setAttribute("aria-label", "Retry");
   btn.addEventListener("click", onRetry);
   return btn;
-}
-
-function formatClock(at: number | null): string {
-  if (at == null) return "--:--";
-  return new Date(at).toLocaleString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
 }

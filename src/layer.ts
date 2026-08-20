@@ -79,7 +79,6 @@ export class GaugeLayerManager {
   private inFlight = false;
   private stopped = false;
   private loadState: LoadState = "loading";
-  private lastOkAt: number | null = null;
   private readonly chip = new StatusChip();
   private registered = false;
   private boundMap: MapLike | null = null;
@@ -185,7 +184,6 @@ export class GaugeLayerManager {
       if (this.stopped || generation !== this.generation) return;
 
       const digest = computeDigest(data);
-      this.lastOkAt = Date.now();
       this.loadState = "ok";
       this.renderChip();
       if (!isFirst && this.registered && digest === this.digest) {
@@ -219,7 +217,6 @@ export class GaugeLayerManager {
     this.chip.render({
       state: this.loadState,
       hasData: this.data != null,
-      lastOkAt: this.lastOkAt,
       onRetry: () => {
         void this.refreshNow();
       },
