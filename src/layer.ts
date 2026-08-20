@@ -303,12 +303,27 @@ export class GaugeLayerManager {
     this.onGaugeClick(properties as unknown as GaugeProperties);
   }
 
-  /** Clicking an overview hex zooms to its extent (drill-down toward the dots). */
+  /**
+   * Hex click = zoom-in, not select (flood.live FloodMap.tsx).
+   * Primary: easeTo the cell centroid at currentZoom + 2. Fallback: the
+   * previous ring-extent fitBounds when getZoom/easeTo are unavailable
+   * (older hosts) — do not no-op.
+   */
   private handleHexClick(e: MapMouseEventLike): void {
     const geometry = e.features?.[0]?.geometry;
     if (geometry?.type !== "Polygon" || !Array.isArray(geometry.coordinates)) return;
     const ring = (geometry.coordinates as [number, number][][])[0];
     if (!ring?.length) return;
+    const map = this.app.getMap?.();
+    if (map?.getZoom && map.easeTo) {
+      const centerLng = ring.reduce((sum, c) => sum + c[0], 0) / ring.length;
+      const centerLat = ring.reduce((sum, c) => sum + c[1], 0) / ring.length;
+      map.easeTo({
+        center: [centerLng, centerLat],
+        zoom: map.getZoom() + 2,
+      });
+      return;
+    }
     let minLng = Infinity;
     let minLat = Infinity;
     let maxLng = -Infinity;

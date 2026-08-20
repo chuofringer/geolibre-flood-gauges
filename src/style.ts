@@ -26,7 +26,10 @@ export const GAUGE_COLOR_EXPRESSION = [
 // The registration's `vectorStyleExpression` field is a JSON STRING, never
 // the array itself — passing the array throws inside the host's whole-map
 // style sync (plan §3.3). This is the one payload detail T3 snapshot-tests.
-// minZoom 6 mirrors flood.live: raw dots only past the hex handoff.
+// minZoom 6 mirrors flood.live GaugeLayers.tsx: raw dots only past the hex
+// handoff. QA noted a few stray dots at national zoom (FL/TX/Vancouver) —
+// that's host minZoom application on this points layer, not hex-click, so
+// leave it (not a one-line correctness fix on the same path).
 export function gaugeLayerStyle(): GeoLibreLayerStylePartial {
   return {
     vectorStyleMode: "expression",
