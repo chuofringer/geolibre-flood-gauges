@@ -1,6 +1,6 @@
 import "./styles/plugin.css";
 import { GaugeLayerManager } from "./layer";
-import { registerPanel, openGaugePanel, PANEL_ID } from "./panel/gaugePanel";
+import { registerPanel, openGaugePanel, openGaugeNotFound, PANEL_ID } from "./panel/gaugePanel";
 import { handleDeepLink, DEEP_LINK_PARAM } from "./deepLink";
 import { parseProjectState, buildProjectState, type ProjectStateV1 } from "./projectState";
 import type { GaugeFeature } from "./core/types";
@@ -77,7 +77,7 @@ export const plugin: GeoLibrePlugin = {
 
   async handleUrlParameters(app, params) {
     if (!manager) return;
-    await handleDeepLink(app, params, manager, openAndTrack);
+    await handleDeepLink(app, params, manager, openAndTrack, openGaugeNotFound);
   },
 
   getProjectState() {
