@@ -4,7 +4,7 @@
   "description": "Live US flood gauge layer from NOAA/NWPS with flood-category symbology, hydrographs, and deep links, for GeoLibre. By the makers of flood.live.",
   "type": "module",
   "private": true,
-  "author": "Zhuo Liu (https://vibemapper.dev)",
+  "author": "chuofringer (https://vibemapper.dev)",
   "license": "MIT",
   "homepage": "https://flood.live",
   "repository": {

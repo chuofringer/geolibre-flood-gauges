@@ -111,4 +111,4 @@ npm run canary      # live NOAA shape/recency check (no mocks)
 
 MIT — see [LICENSE](LICENSE).
 
-Made by [Zhuo Liu](https://vibemapper.dev)
+Made by [chuofringer](https://github.com/chuofringer) · [vibemapper.dev](https://vibemapper.dev)
