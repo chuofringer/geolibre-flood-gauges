@@ -1,0 +1,134 @@
+name: E2E (Playwright vs. pinned GeoLibre)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * *" # nightly
+  pull_request:
+    paths:
+      - "src/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+
+# Pinned deliberately (plan D6/T4) — bump this ref on purpose, not silently.
+# Update alongside geolibre-plugin/plugin.json's registry `minGeoLibreVersion`
+# entry when the floor changes.
+env:
+  GEOLIBRE_REPO: opengeos/GeoLibre
+  GEOLIBRE_REF: v2.6.0
+  GEOLIBRE_FLOOR_REF: v2.0.0 # the D6 minGeoLibreVersion floor
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugin repo
+        uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: plugin/package-lock.json
+
+      - name: Build the plugin bundle
+        working-directory: plugin
+        run: |
+          npm ci
+          npm run build:geolibre
+          npm run validate:plugin
+
+      - name: Serve the plugin bundle
+        working-directory: plugin
+        run: npm run serve:geolibre 8123 &
+
+      - name: Checkout pinned GeoLibre (registry floor build)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GEOLIBRE_REPO }}
+          ref: ${{ env.GEOLIBRE_REF }}
+          path: geolibre
+
+      - name: Build and serve GeoLibre web
+        working-directory: geolibre
+        env:
+          VITE_GEOLIBRE_PLUGIN_REGISTRY_URL: http://localhost:8123/plugin.json
+        run: |
+          npm ci
+          npm run build
+          npx serve -l 5173 dist &
+          npx wait-on http://localhost:5173
+
+      - name: Install Playwright browsers
+        working-directory: plugin
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e smoke
+        working-directory: plugin
+        env:
+          GEOLIBRE_URL: http://localhost:5173
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: plugin/playwright-report/
+          retention-days: 7
+
+  # D6 registry compatibility claim, CI-tested rather than aspirational
+  # (plan T4): a second build pinned at minGeoLibreVersion runs the reduced
+  # assertion set (install, layer renders, click -> panel).
+  e2e-floor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugin repo
+        uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: plugin/package-lock.json
+
+      - name: Build the plugin bundle
+        working-directory: plugin
+        run: |
+          npm ci
+          npm run build:geolibre
+          npm run validate:plugin
+
+      - name: Serve the plugin bundle
+        working-directory: plugin
+        run: npm run serve:geolibre 8123 &
+
+      - name: Checkout GeoLibre at the minGeoLibreVersion floor
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GEOLIBRE_REPO }}
+          ref: ${{ env.GEOLIBRE_FLOOR_REF }}
+          path: geolibre-floor
+
+      - name: Build and serve GeoLibre web (floor)
+        working-directory: geolibre-floor
+        env:
+          VITE_GEOLIBRE_PLUGIN_REGISTRY_URL: http://localhost:8123/plugin.json
+        run: |
+          npm ci
+          npm run build
+          npx serve -l 5174 dist &
+          npx wait-on http://localhost:5174
+
+      - name: Install Playwright browsers
+        working-directory: plugin
+        run: npx playwright install --with-deps chromium
+
+      - name: Run reduced e2e smoke at the floor version
+        working-directory: plugin
+        env:
+          GEOLIBRE_URL: http://localhost:5174
+        run: npx playwright test --grep "minGeoLibreVersion floor"

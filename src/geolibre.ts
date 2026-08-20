@@ -49,6 +49,14 @@ export const plugin: GeoLibrePlugin = {
     void manager.start();
     registerPanel(app);
 
+    // T4 test hook (plan §5): lets the Playwright e2e suite force an
+    // immediate refresh cycle via `manager.refreshNow()` without waiting
+    // out the 30-min interval. Harmless in production — just a window
+    // global exposing the same manager the plugin already owns.
+    if (typeof window !== "undefined") {
+      (window as unknown as { __floodGaugesManager?: GaugeLayerManager }).__floodGaugesManager = manager;
+    }
+
     if (currentRefreshMinutes) manager.setRefreshIntervalMinutes(currentRefreshMinutes);
 
     if (pendingState) {
@@ -61,6 +69,9 @@ export const plugin: GeoLibrePlugin = {
   deactivate(app) {
     manager?.stop();
     manager = null;
+    if (typeof window !== "undefined") {
+      delete (window as unknown as { __floodGaugesManager?: GaugeLayerManager }).__floodGaugesManager;
+    }
     app.unregisterFloatingPanel?.(PANEL_ID);
   },
 

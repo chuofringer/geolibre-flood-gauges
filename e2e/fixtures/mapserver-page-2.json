@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "exceededTransferLimit": false,
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-79.9959, 40.4406] },
+      "properties": {
+        "gaugelid": "PTTP1",
+        "status": "Minor",
+        "location": "Pittsburgh",
+        "waterbody": "Allegheny River",
+        "state": "PA",
+        "observed": 16.1,
+        "latitude": 40.4406,
+        "longitude": -79.9959,
+        "action": 10,
+        "flood": 15,
+        "moderate": 20,
+        "major": 25,
+        "units": "ft",
+        "obstime": "2026-08-19T12:30:00Z",
+        "wfo": "PBZ"
+      }
+    }
+  ]
+}
