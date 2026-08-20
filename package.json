@@ -1,6 +1,6 @@
 {
   "name": "geolibre-flood-gauges",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Live US flood gauge layer from NOAA/NWPS with flood-category symbology, hydrographs, and deep links, for GeoLibre. By the makers of flood.live.",
   "type": "module",
   "private": true,

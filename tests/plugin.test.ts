@@ -213,7 +213,7 @@ describe("plugin (T3 host contract)", () => {
     const plugin = await loadPlugin();
     expect(plugin.id).toBe("geolibre-flood-gauges");
     expect(plugin.name).toBe("US Live Flood Gauges");
-    expect(plugin.version).toBe("0.2.0");
+    expect(plugin.version).toBe("0.3.0");
     expect(plugin.urlParameterNames).toContain("flood-gauge");
   });
 

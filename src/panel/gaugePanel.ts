@@ -5,6 +5,7 @@ import { computeTrend } from "../core/trend";
 import { getLatestObserved } from "../core/latestObserved";
 import { formatStaleness } from "./format";
 import { buildSeries } from "./series";
+import { computeStageBarModel, renderStageBar } from "./stageBar";
 import { Hydrograph } from "./hydrograph";
 import type { GaugeDetail, GaugeProperties, StageFlowResponse } from "../core/types";
 import type { GeoLibreAppAPI } from "../host/geolibre-api";
@@ -37,13 +38,6 @@ const TREND_DISPLAY = {
   falling: { symbol: "▼", label: "Falling" },
   stable: { symbol: "▶", label: "Stable" },
 } as const;
-
-const THRESHOLD_ROWS = [
-  { key: "action", label: "Action" },
-  { key: "minor", label: "Minor" },
-  { key: "moderate", label: "Moderate" },
-  { key: "major", label: "Major" },
-] as const;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -137,36 +131,25 @@ function renderGaugePanel(
     el("p", "fg-location", [gauge.location, gauge.waterbody, gauge.state].filter(Boolean).join(" · ")),
   );
 
-  const badgeRow = el("div", "fg-badge-row");
+  // Meta row, flood.live style (GaugePanelHeader.tsx): badge · trend · age.
+  const metaRow = el("div", "fg-meta-row");
   const badge = el("span", "fg-badge");
-  const initialLabel = STATUS_LABEL[gauge.status] ?? gauge.status;
-  badge.textContent = initialLabel;
-  badge.style.backgroundColor = statusColor(gauge.status);
-  badgeRow.appendChild(badge);
-  header.appendChild(badgeRow);
+  applyBadge(badge, gauge.status);
+  const trendEl = el("span", "fg-trend");
+  const ageEl = el("span", "fg-age fg-muted", "…");
+  metaRow.appendChild(badge);
+  metaRow.appendChild(trendEl);
+  metaRow.appendChild(ageEl);
+  header.appendChild(metaRow);
 
   const observedRow = el("p", "fg-observed-row", "Observed: –");
 
-  const thresholdTable = el("table", "fg-thresholds");
-  const tbody = el("tbody");
-  const valueCells = new Map<string, HTMLTableCellElement>();
-  for (const row of THRESHOLD_ROWS) {
-    const tr = el("tr");
-    const chip = el("span", "fg-chip");
-    chip.style.backgroundColor = statusColor(row.key);
-    const labelCell = el("td", "fg-threshold-label");
-    labelCell.appendChild(chip);
-    labelCell.appendChild(document.createTextNode(row.label));
-    tr.appendChild(labelCell);
-    const valueCell = el("td", "fg-threshold-value", "–");
-    tr.appendChild(valueCell);
-    tbody.appendChild(tr);
-    valueCells.set(row.key, valueCell);
-  }
-  thresholdTable.appendChild(tbody);
+  // Stage bar replaces the old 4-row threshold table (design review):
+  // colored category zones with a marker at the observed stage.
+  const stageBarHost = el("div", "fg-stagebar");
+  stageBarHost.style.display = "none";
 
   const staleness = el("p", "fg-staleness fg-muted", "Loading latest observation…");
-  const provenance = el("p", "fg-provenance fg-muted", "Data: NOAA/NWPS");
 
   const hydrographContainer = el("div", "fg-hydrograph");
   const hydrograph = new Hydrograph();
@@ -182,9 +165,8 @@ function renderGaugePanel(
 
   container.appendChild(header);
   container.appendChild(observedRow);
-  container.appendChild(thresholdTable);
+  container.appendChild(stageBarHost);
   container.appendChild(staleness);
-  container.appendChild(provenance);
   container.appendChild(hydrographContainer);
   container.appendChild(footer);
 
@@ -194,7 +176,16 @@ function renderGaugePanel(
   loadGaugeData(gauge.gaugelid, controller.signal)
     .then(({ detail, stageflow }) => {
       if (disposed) return;
-      fillDetail(gauge, detail, stageflow, { badge, observedRow, valueCells, staleness, hydrographContainer, hydrograph });
+      fillDetail(gauge, detail, stageflow, {
+        badge,
+        trendEl,
+        ageEl,
+        observedRow,
+        stageBarHost,
+        staleness,
+        hydrographContainer,
+        hydrograph,
+      });
     })
     .catch((err: unknown) => {
       if (disposed || controller.signal.aborted) return;
@@ -211,11 +202,20 @@ function renderGaugePanel(
 
 interface FillTargets {
   badge: HTMLElement;
+  trendEl: HTMLElement;
+  ageEl: HTMLElement;
   observedRow: HTMLElement;
-  valueCells: Map<string, HTMLTableCellElement>;
+  stageBarHost: HTMLElement;
   staleness: HTMLElement;
   hydrographContainer: HTMLElement;
   hydrograph: Hydrograph;
+}
+
+/** flood.live badge treatment: dark text only on the light chip colors. */
+function applyBadge(badge: HTMLElement, status: string): void {
+  badge.textContent = STATUS_LABEL[status] ?? status;
+  badge.style.backgroundColor = statusColor(status);
+  badge.style.color = status === "action" || status === "no_flooding" ? "#000" : "#fff";
 }
 
 function fillDetail(
@@ -238,39 +238,27 @@ function fillDetail(
     detail.status?.observed?.floodCategory ??
     gauge.status;
 
-  targets.badge.textContent = STATUS_LABEL[computedStatus] ?? computedStatus;
-  targets.badge.style.backgroundColor = statusColor(computedStatus);
-
-  const stageUnits = detail.flood?.stageUnits ?? stageflow.observed?.primaryUnits ?? "";
-  for (const row of THRESHOLD_ROWS) {
-    const cell = targets.valueCells.get(row.key);
-    if (!cell) continue;
-    const value = thresholds[row.key];
-    cell.textContent = value == null ? "–" : `${value}${stageUnits ? ` ${stageUnits}` : ""}`;
-    if (observed != null && isHighestExceeded(row.key, thresholds, observed)) {
-      cell.classList.add("fg-observed");
-      // Tint the whole exceeded row with its category color so the current
-      // stage reads at a glance (bold alone was too subtle).
-      const tr = cell.parentElement as HTMLElement | null;
-      if (tr) tr.style.background = `color-mix(in srgb, ${statusColor(row.key)} 14%, transparent)`;
-    }
-  }
+  applyBadge(targets.badge, computedStatus);
 
   const trend = stageflow.observed?.data ? computeTrend(stageflow.observed.data) : "stable";
   const trendInfo = TREND_DISPLAY[trend];
+  targets.trendEl.className = `fg-trend fg-trend-${trend}`;
+  targets.trendEl.textContent = trendInfo.symbol;
+  targets.trendEl.title = `Trend: ${trendInfo.label}`;
 
-  // Observed stage, bolded, with the trend arrow (plan §3.6 item 2).
+  // Observed stage, bolded (plan §3.6 item 2); the trend arrow sits in the
+  // meta row next to the badge, flood.live style.
   const units = stageflow.observed?.primaryUnits ?? detail.flood?.stageUnits ?? gauge.units ?? "";
   targets.observedRow.textContent = "Observed: ";
   if (observed != null) {
     const value = el("strong", "fg-observed-value", `${observed}${units ? ` ${units}` : ""}`);
     targets.observedRow.appendChild(value);
-    const arrow = el("span", `fg-trend fg-trend-${trend}`, ` ${trendInfo.symbol}`);
-    arrow.title = `Trend: ${trendInfo.label}`;
-    targets.observedRow.appendChild(arrow);
   } else {
     targets.observedRow.appendChild(document.createTextNode("–"));
   }
+
+  renderStageBar(targets.stageBarHost, computeStageBarModel(thresholds, observed), units);
+
   const lastObs = stageflow.observed?.data?.length
     ? stageflow.observed.data[stageflow.observed.data.length - 1].validTime
     : null;
@@ -279,30 +267,19 @@ function fillDetail(
   if (lastObs) {
     const info = formatStaleness(lastObs);
     if (info) {
-      targets.staleness.classList.toggle("fg-amber", info.tier === "amber");
-      targets.staleness.classList.toggle("fg-stale-red", info.tier === "red");
-      targets.staleness.textContent = info.label;
+      // Relative age in the meta row (amber/red past the staleness tiers);
+      // absolute time + provenance on one muted line under the stage bar.
+      targets.ageEl.textContent = info.relative;
+      targets.ageEl.className = `fg-age ${info.tier === "amber" ? "fg-amber" : info.tier === "red" ? "fg-stale-red" : "fg-muted"}`;
+      targets.ageEl.title = info.absolute;
+      targets.staleness.textContent = `${info.absolute} · Data: NOAA/NWPS`;
     }
   } else {
-    targets.staleness.textContent = "No recent observation available.";
+    targets.ageEl.textContent = "";
+    targets.staleness.textContent = "No recent observation available. · Data: NOAA/NWPS";
   }
 
   const now = Date.now();
   const series = buildSeries(stageflow, thresholds, now);
   targets.hydrograph.mount(targets.hydrographContainer, series, units);
-}
-
-function isHighestExceeded(
-  key: (typeof THRESHOLD_ROWS)[number]["key"],
-  thresholds: Record<string, number | null>,
-  observed: number,
-): boolean {
-  // Highlights the highest threshold row the observed value has reached,
-  // for the "observed bolded" requirement (plan §3.6 item 2).
-  const order: (keyof typeof thresholds)[] = ["major", "moderate", "minor", "action"];
-  for (const k of order) {
-    const v = thresholds[k];
-    if (v != null && observed >= v) return k === key;
-  }
-  return false;
 }

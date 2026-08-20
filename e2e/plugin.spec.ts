@@ -130,7 +130,8 @@ test.describe("US Live Flood Gauges plugin (T4 smoke)", () => {
     await expect(panel).toBeVisible({ timeout: 30_000 });
     await expect(panel.locator(".fg-lid")).toHaveText("PTTP1");
     await expect(panel.locator(".fg-badge")).toBeVisible();
-    await expect(panel.locator(".fg-thresholds tr")).toHaveCount(4);
+    await expect(panel.locator(".fg-stagebar-zone")).toHaveCount(5, { timeout: 30_000 });
+    await expect(panel.locator(".fg-stagebar-marker")).toBeVisible();
     await expect(panel.locator(".fg-observed-value")).toBeVisible({ timeout: 30_000 });
     await expect(panel.locator(".fg-staleness")).toBeVisible();
     await expect(panel.locator(".fg-hydrograph canvas")).toBeVisible({ timeout: 30_000 });
