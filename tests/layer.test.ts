@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { GaugeLayerManager, HEX_LAYERS, LAYER_ID, NATIVE_ID, computeDigest } from "../src/layer";
+import { GaugeLayerManager, HEX_LAYERS, LAYER_ID, NATIVE_ID, HIT_ID, computeDigest } from "../src/layer";
+import { GAUGE_CIRCLE_RADIUS, GAUGE_HIT_RADIUS, gaugeHitLayerPaint, gaugeLayerStyle } from "../src/style";
 import { FakeHost } from "./support/fakeHost";
 import type { GaugeGeoJSON, GaugeFeature } from "../src/core/types";
 
@@ -95,8 +96,36 @@ describe("GaugeLayerManager", () => {
     expect(layer.metadata?.originalUrl).toBeTruthy();
     expect(layer.style).toBeDefined();
     expect(typeof layer.style?.vectorStyleExpression).toBe("string");
+    expect(layer.style?.circleRadius).toBe(GAUGE_CIRCLE_RADIUS);
 
     manager.stop();
+  });
+
+  it("adds a transparent hit circle larger than the visible dot, without changing visible radius", async () => {
+    stubFetchOnce(collection([gauge()]));
+    const manager = new GaugeLayerManager(host.app, vi.fn());
+    void manager.start();
+    await manager.ready;
+
+    expect(GAUGE_HIT_RADIUS).toBeGreaterThan(GAUGE_CIRCLE_RADIUS);
+    expect(gaugeLayerStyle().circleRadius).toBe(GAUGE_CIRCLE_RADIUS);
+
+    const hit = host.map!.addLayerCalls.find((c) => c.layer.id === HIT_ID);
+    expect(hit).toBeDefined();
+    expect(hit!.beforeId).toBe(NATIVE_ID);
+    expect(hit!.layer.type).toBe("circle");
+    expect(hit!.layer.minzoom).toBe(6);
+    expect(hit!.layer.source).toBe(`${NATIVE_ID}-source`);
+    expect(hit!.layer.paint).toEqual(gaugeHitLayerPaint());
+    expect((hit!.layer.paint as { "circle-opacity": number })["circle-opacity"]).toBe(0);
+    expect((hit!.layer.paint as { "circle-radius": number })["circle-radius"]).toBe(GAUGE_HIT_RADIUS);
+
+    // Host must not adopt the hit id — it would re-paint it as a visible dot.
+    const layer = host.layers.get(LAYER_ID)!;
+    expect(layer.nativeLayerIds).not.toContain(HIT_ID);
+
+    manager.stop();
+    expect(host.map!.getLayer(HIT_ID)).toBeUndefined();
   });
 
   it("skips re-registration when the digest is unchanged", async () => {
@@ -187,6 +216,27 @@ describe("GaugeLayerManager", () => {
 
     host.map!.fire("click", NATIVE_ID, { features: [{ properties: { gaugelid: "PTTP1" } }] });
     expect(onClick).toHaveBeenCalledWith({ gaugelid: "PTTP1" });
+
+    onClick.mockClear();
+    host.map!.fire("click", HIT_ID, { features: [{ properties: { gaugelid: "PTTP1" } }] });
+    expect(onClick).toHaveBeenCalledWith({ gaugelid: "PTTP1" });
+
+    manager.stop();
+  });
+
+  it("ignores hit-circle clicks when the visible gauge layer is hidden", async () => {
+    stubFetchOnce(collection([gauge({ gaugelid: "PTTP1" })]));
+    const onClick = vi.fn();
+    const manager = new GaugeLayerManager(host.app, onClick);
+    void manager.start();
+    await manager.ready;
+
+    host.map!.setLayoutProperty(NATIVE_ID, "visibility", "none");
+    window.dispatchEvent(new Event("geolibre-layer-labels-change"));
+    expect(host.map!.getLayoutProperty(HIT_ID, "visibility")).toBe("none");
+
+    host.map!.fire("click", HIT_ID, { features: [{ properties: { gaugelid: "PTTP1" } }] });
+    expect(onClick).not.toHaveBeenCalled();
 
     manager.stop();
   });

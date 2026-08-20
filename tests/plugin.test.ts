@@ -107,7 +107,7 @@ describe("plugin (T3 host contract)", () => {
     await vi.waitFor(() => expect(host.layers.size).toBe(3));
     expect(host.panels.size).toBe(1);
     // No handler stacking across the reactivate cycle.
-    expect(host.map!.liveHandlerCount).toBe(9); // click/enter/leave × points + 2 hex tiers
+    expect(host.map!.liveHandlerCount).toBe(12); // click/enter/leave × points + hit + 2 hex tiers
     expect(host.windowListeners.length).toBe(1); // geolibre-layer-labels-change
 
     plugin.deactivate(host.app);
