@@ -172,6 +172,26 @@
   white-space: pre;
 }
 
+/* Honesty block: NOAA source + life-safety. Always visible on empty and loaded. */
+.fg-honesty {
+  margin: 10px 0 8px;
+  padding: 8px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+
+.fg-source {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fg-disclaimer {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
 .fg-footer {
   margin: 10px 0 0;
   padding-top: 10px;
