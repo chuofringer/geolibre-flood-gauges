@@ -66,6 +66,10 @@ async function main() {
     `bundle too large: ${totalBytes} bytes exceeds the ${MAX_BUNDLE_BYTES}-byte budget`,
   );
 
+  // Simulate the registry validator's environment: it imports every
+  // plugin bundle in ONE Node process, so an earlier plugin may have
+  // polyfilled `window`. Our bundle must import cleanly even then.
+  globalThis.window ??= {};
   const mod = await import(pathToFileURL(entryPath).href);
   const exported = mod.plugin ?? mod.default;
   assert(Boolean(exported), "bundle does not export a default or named `plugin`");
