@@ -145,6 +145,8 @@ function renderGaugePanel(
   badgeRow.appendChild(badge);
   header.appendChild(badgeRow);
 
+  const observedRow = el("p", "fg-observed-row", "Observed: –");
+
   const thresholdTable = el("table", "fg-thresholds");
   const tbody = el("tbody");
   const valueCells = new Map<string, HTMLTableCellElement>();
@@ -179,6 +181,7 @@ function renderGaugePanel(
   footer.appendChild(link);
 
   container.appendChild(header);
+  container.appendChild(observedRow);
   container.appendChild(thresholdTable);
   container.appendChild(staleness);
   container.appendChild(provenance);
@@ -191,7 +194,7 @@ function renderGaugePanel(
   loadGaugeData(gauge.gaugelid, controller.signal)
     .then(({ detail, stageflow }) => {
       if (disposed) return;
-      fillDetail(gauge, detail, stageflow, { badge, valueCells, staleness, hydrographContainer, hydrograph });
+      fillDetail(gauge, detail, stageflow, { badge, observedRow, valueCells, staleness, hydrographContainer, hydrograph });
     })
     .catch((err: unknown) => {
       if (disposed || controller.signal.aborted) return;
@@ -208,6 +211,7 @@ function renderGaugePanel(
 
 interface FillTargets {
   badge: HTMLElement;
+  observedRow: HTMLElement;
   valueCells: Map<string, HTMLTableCellElement>;
   staleness: HTMLElement;
   hydrographContainer: HTMLElement;
@@ -249,6 +253,19 @@ function fillDetail(
 
   const trend = stageflow.observed?.data ? computeTrend(stageflow.observed.data) : "stable";
   const trendInfo = TREND_DISPLAY[trend];
+
+  // Observed stage, bolded, with the trend arrow (plan §3.6 item 2).
+  const units = stageflow.observed?.primaryUnits ?? detail.flood?.stageUnits ?? gauge.units ?? "";
+  targets.observedRow.textContent = "Observed: ";
+  if (observed != null) {
+    const value = el("strong", "fg-observed-value", `${observed}${units ? ` ${units}` : ""}`);
+    targets.observedRow.appendChild(value);
+    const arrow = el("span", `fg-trend fg-trend-${trend}`, ` ${trendInfo.symbol}`);
+    arrow.title = `Trend: ${trendInfo.label}`;
+    targets.observedRow.appendChild(arrow);
+  } else {
+    targets.observedRow.appendChild(document.createTextNode("–"));
+  }
   const lastObs = stageflow.observed?.data?.length
     ? stageflow.observed.data[stageflow.observed.data.length - 1].validTime
     : null;
@@ -259,8 +276,7 @@ function fillDetail(
     if (info) {
       targets.staleness.classList.toggle("fg-amber", info.tier === "amber");
       targets.staleness.classList.toggle("fg-stale-red", info.tier === "red");
-      targets.staleness.textContent = `${trendInfo.symbol} ${info.label}`;
-      targets.staleness.title = `Trend: ${trendInfo.label}`;
+      targets.staleness.textContent = info.label;
     }
   } else {
     targets.staleness.textContent = "No recent observation available.";

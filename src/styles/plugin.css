@@ -86,6 +86,27 @@
   font-weight: 700;
 }
 
+.fg-observed-row {
+  margin: 6px 0 2px;
+  font-size: 13px;
+}
+
+.fg-observed-value {
+  font-weight: 700;
+}
+
+.fg-trend-rising {
+  color: #dc2626;
+}
+
+.fg-trend-falling {
+  color: #2563eb;
+}
+
+.fg-trend-stable {
+  color: hsl(var(--muted-foreground));
+}
+
 .fg-staleness {
   margin: 4px 0 2px;
 }
