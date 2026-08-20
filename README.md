@@ -59,6 +59,12 @@ noting any deviation.
 
 ## Usage
 
+A status chip shows only while NOAA is loading or failed — **Loading
+gauges…** on first load (**Refreshing gauges…** after that). It hides
+when NOAA is healthy. If the fetch fails or is aborted after ~45s, the
+chip shows **Unable to reach NOAA.** (or **Unable to reach NOAA. Showing
+last load.** when a prior load exists) and **Retry**.
+
 Click any gauge dot to open its panel: category badge, color stage bar
 with Action / Minor / Moderate / Major tick labels, staleness indicator,
 and a hydrograph.
