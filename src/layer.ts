@@ -1,12 +1,13 @@
 import { NOAA_MAP_SERVER_URL, REFRESH_INTERVAL } from "./core/constants";
 import { fetchAllGauges } from "./data/noaaMapServer";
 import { aggregateToHex, FLOOD_STATUSES, type HexFeatureCollection } from "./core/hexAggregation";
-import { gaugeLayerStyle, hexLayerStyle, HEX_COLOR_EXPRESSION } from "./style";
+import { gaugeLayerStyle, gaugeHitLayerPaint, hexLayerStyle, HEX_COLOR_EXPRESSION } from "./style";
 import type { GaugeFeature, GaugeGeoJSON, GaugeProperties } from "./core/types";
 import type { GeoLibreAppAPI, GeoLibreFeatureCollection, MapLike } from "./host/geolibre-api";
 
 export const LAYER_ID = "flood-gauges-layer";
 export const NATIVE_ID = "flood-gauges-points";
+export const HIT_ID = "flood-gauges-points-hit";
 export const LAYER_NAME = "US Live Flood Gauges (NOAA)";
 export const GROUP_NAME = "US Live Flood Gauges";
 
@@ -22,6 +23,12 @@ export const GROUP_NAME = "US Live Flood Gauges";
 // host-created `<nativeId>-source`, and re-added after every host sync pass
 // (the `geolibre-layer-labels-change` signal) so it survives basemap
 // switches exactly like our click handlers do.
+//
+// Gauge dots get the same treatment for clickability: `HIT_ID` is a
+// transparent circle on the host's points source, larger than the visible
+// r=6 dot (see `GAUGE_HIT_RADIUS`). It is NOT listed in `nativeLayerIds` —
+// the host would re-apply the visible circle paint on every sync. We add,
+// hide-with-the-dots, and remove it ourselves.
 export const HEX_LAYERS = [
   {
     id: "flood-gauges-hex3-layer",
@@ -136,6 +143,7 @@ export class GaugeLayerManager {
       for (const hex of HEX_LAYERS) {
         if (map.getLayer(hex.fillId)) map.removeLayer(hex.fillId);
       }
+      if (map.getLayer(HIT_ID)) map.removeLayer(HIT_ID);
     }
   }
 
@@ -217,6 +225,7 @@ export class GaugeLayerManager {
       });
     }
     this.ensureHexFillLayers();
+    this.ensureGaugeHitLayer();
 
     if (first) {
       this.app.addLayerGroup?.(GROUP_NAME, [
@@ -257,14 +266,52 @@ export class GaugeLayerManager {
     }
   }
 
+  /**
+   * Transparent circle on the host's points source so mid-zoom dots are a
+   * usable hit target. Inserted beneath the visible layer; paint is ours
+   * (the host would flatten it to the visible radius if it adopted this id).
+   */
+  private ensureGaugeHitLayer(): void {
+    const map = this.app.getMap?.();
+    if (!map?.addLayer || !map.getLayer || !map.getSource) return;
+    const sourceId = `${NATIVE_ID}-source`;
+    const visibility = this.nativeDotsVisibility(map);
+    if (map.getLayer(HIT_ID)) {
+      map.setLayoutProperty?.(HIT_ID, "visibility", visibility);
+      return;
+    }
+    if (!map.getSource(sourceId)) return;
+    map.addLayer(
+      {
+        id: HIT_ID,
+        type: "circle",
+        source: sourceId,
+        minzoom: 6,
+        layout: { visibility },
+        paint: gaugeHitLayerPaint(),
+      },
+      map.getLayer(NATIVE_ID) ? NATIVE_ID : undefined,
+    );
+  }
+
+  /** Follows the host-owned visible dots so a hidden layer isn't still clickable. */
+  private nativeDotsVisibility(map: MapLike): "visible" | "none" {
+    if (!map.getLayer?.(NATIVE_ID) || !map.getLayoutProperty) return "visible";
+    return map.getLayoutProperty(NATIVE_ID, "visibility") === "none" ? "none" : "visible";
+  }
+
   private bindMapHandlers(): void {
     this.ensureHexFillLayers();
+    this.ensureGaugeHitLayer();
     const map = this.app.getMap?.();
     if (!map) return; // map not ready yet; the next labels-change event retries
     this.unbindFrom(map);
     map.on("click", NATIVE_ID, this.boundClick);
     map.on("mouseenter", NATIVE_ID, this.boundMouseEnter);
     map.on("mouseleave", NATIVE_ID, this.boundMouseLeave);
+    map.on("click", HIT_ID, this.boundClick);
+    map.on("mouseenter", HIT_ID, this.boundMouseEnter);
+    map.on("mouseleave", HIT_ID, this.boundMouseLeave);
     for (const hex of HEX_LAYERS) {
       // Bound to the fill layer: the interior is the click target, not the
       // 1px outline the host draws under hex.nativeId.
@@ -285,6 +332,9 @@ export class GaugeLayerManager {
     map.off("click", NATIVE_ID, this.boundClick);
     map.off("mouseenter", NATIVE_ID, this.boundMouseEnter);
     map.off("mouseleave", NATIVE_ID, this.boundMouseLeave);
+    map.off("click", HIT_ID, this.boundClick);
+    map.off("mouseenter", HIT_ID, this.boundMouseEnter);
+    map.off("mouseleave", HIT_ID, this.boundMouseLeave);
     for (const hex of HEX_LAYERS) {
       map.off("click", hex.fillId, this.boundHexClick);
       map.off("mouseenter", hex.fillId, this.boundMouseEnter);
@@ -298,6 +348,8 @@ export class GaugeLayerManager {
   }
 
   private handleClick(e: MapMouseEventLike): void {
+    const map = this.app.getMap?.();
+    if (map && this.nativeDotsVisibility(map) === "none") return;
     const properties = e.features?.[0]?.properties;
     if (!properties) return;
     this.onGaugeClick(properties as unknown as GaugeProperties);

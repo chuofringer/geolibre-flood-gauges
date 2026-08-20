@@ -12,6 +12,10 @@ export class FakeMap implements MapLike {
   readonly handlerLedger = new Map<string, Set<Handler>>();
   zoom = 2;
   readonly easeToCalls: { center: [number, number]; zoom: number }[] = [];
+  readonly layers = new Map<string, Record<string, unknown>>();
+  readonly sources = new Set<string>();
+  readonly addLayerCalls: { layer: Record<string, unknown>; beforeId?: string }[] = [];
+  readonly layout = new Map<string, Record<string, unknown>>();
 
   on(type: string, layerId: string, listener: Handler): unknown {
     const key = `${type}:${layerId}`;
@@ -36,6 +40,46 @@ export class FakeMap implements MapLike {
   easeTo(options: { center: [number, number]; zoom: number }): unknown {
     this.easeToCalls.push(options);
     this.zoom = options.zoom;
+    return this;
+  }
+
+  addSource(id: string): void {
+    this.sources.add(id);
+  }
+
+  /** Marks a host-created native layer so plugin `ensure*` helpers can `beforeId` it. */
+  addHostLayer(id: string): void {
+    this.layers.set(id, { id });
+  }
+
+  addLayer(layer: Record<string, unknown>, beforeId?: string): unknown {
+    this.addLayerCalls.push({ layer, beforeId });
+    if (typeof layer.id === "string") this.layers.set(layer.id, layer);
+    return this;
+  }
+
+  removeLayer(id: string): unknown {
+    this.layers.delete(id);
+    this.layout.delete(id);
+    return this;
+  }
+
+  getLayer(id: string): unknown {
+    return this.layers.get(id);
+  }
+
+  getSource(id: string): unknown {
+    return this.sources.has(id) ? { id } : undefined;
+  }
+
+  getLayoutProperty(id: string, name: string): unknown {
+    return this.layout.get(id)?.[name];
+  }
+
+  setLayoutProperty(id: string, name: string, value: unknown): unknown {
+    const current = this.layout.get(id) ?? {};
+    current[name] = value;
+    this.layout.set(id, current);
     return this;
   }
 
@@ -87,6 +131,13 @@ export class FakeHost {
     const fullApi: Required<GeoLibreAppAPI> = {
       registerExternalNativeLayer: (layer) => {
         this.layers.set(layer.id, layer);
+        // Host creates `<first nativeId>-source` and the primary native layer;
+        // plugin-owned extras (hex fills, gauge hit circle) then `addLayer`.
+        const primary = layer.nativeLayerIds[0];
+        if (primary && this.map) {
+          this.map.addSource(`${primary}-source`);
+          this.map.addHostLayer(primary);
+        }
       },
       unregisterExternalNativeLayer: (id) => {
         this.layers.delete(id);

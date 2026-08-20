@@ -23,6 +23,30 @@ export const GAUGE_COLOR_EXPRESSION = [
   "rgba(136,136,136,0.2)",
 ];
 
+// Visible dot size. flood.live GaugeLayers.tsx interpolates 6→10 by zoom;
+// the host style field is a flat number, so we keep the z6 handoff size.
+export const GAUGE_CIRCLE_RADIUS = 6;
+
+// Invisible hit-circle radius. flood.live FloodMap.tsx expands clicks via
+// Map `clickTolerance` (3 desktop / 8 mobile) rather than a second circle.
+// GeoLibre owns the Map constructor, so we add a transparent circle instead:
+// visible radius + flood.live's mobile tolerance, a ~28px target at z6–7.
+export const GAUGE_HIT_RADIUS = GAUGE_CIRCLE_RADIUS + 8;
+
+export function gaugeHitLayerPaint(): {
+  "circle-radius": number;
+  "circle-color": string;
+  "circle-opacity": number;
+  "circle-stroke-width": number;
+} {
+  return {
+    "circle-radius": GAUGE_HIT_RADIUS,
+    "circle-color": "#000000",
+    "circle-opacity": 0,
+    "circle-stroke-width": 0,
+  };
+}
+
 // The registration's `vectorStyleExpression` field is a JSON STRING, never
 // the array itself — passing the array throws inside the host's whole-map
 // style sync (plan §3.3). This is the one payload detail T3 snapshot-tests.
@@ -35,7 +59,7 @@ export function gaugeLayerStyle(): GeoLibreLayerStylePartial {
     vectorStyleMode: "expression",
     vectorStyleProperty: "status",
     vectorStyleExpression: JSON.stringify(GAUGE_COLOR_EXPRESSION),
-    circleRadius: 6,
+    circleRadius: GAUGE_CIRCLE_RADIUS,
     strokeColor: "#000000",
     strokeWidth: 1,
     fillOpacity: 1,

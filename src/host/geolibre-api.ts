@@ -60,6 +60,8 @@ export interface MapLike {
   getSource?(id: string): unknown;
   addLayer?(layer: Record<string, unknown>, beforeId?: string): unknown;
   removeLayer?(id: string): unknown;
+  getLayoutProperty?(id: string, name: string): unknown;
+  setLayoutProperty?(id: string, name: string, value: unknown): unknown;
   // Hex-click drill-down (flood.live FloodMap.tsx): easeTo(currentZoom + 2).
   getZoom?(): number;
   easeTo?(options: { center: [number, number]; zoom: number }): unknown;
