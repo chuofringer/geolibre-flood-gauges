@@ -1,3 +1,10 @@
+<p align="center">
+  <a href="https://geolibre.app"><img src="docs/logo-geolibre.png" alt="GeoLibre" height="88"></a>
+  &ensp;<b>×</b>&ensp;
+  <a href="https://flood.live"><img src="docs/logo-flood-live.png" alt="flood.live" height="88"></a>
+</p>
+<p align="center">A GeoLibre plugin by flood.live</p>
+
 # US Live Flood Gauges — a GeoLibre plugin
 
 **By [flood.live](https://flood.live)** — real-time US flood monitoring
