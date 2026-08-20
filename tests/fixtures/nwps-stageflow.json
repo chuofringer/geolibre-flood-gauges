@@ -1,0 +1,17 @@
+{
+  "observed": {
+    "primaryUnits": "ft",
+    "data": [
+      { "validTime": "2026-08-19T09:00:00Z", "primary": 10.1, "secondary": null },
+      { "validTime": "2026-08-19T10:00:00Z", "primary": 10.4, "secondary": null },
+      { "validTime": "2026-08-19T11:00:00Z", "primary": 10.9, "secondary": null }
+    ]
+  },
+  "forecast": {
+    "primaryUnits": "ft",
+    "data": [
+      { "validTime": "2026-08-19T12:00:00Z", "primary": 11.3, "secondary": null },
+      { "validTime": "2026-08-19T13:00:00Z", "primary": 11.8, "secondary": null }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "lid": "PTTP1",
+  "name": "Pittsburgh",
+  "state": { "abbreviation": "PA", "name": "Pennsylvania" },
+  "county": "Allegheny",
+  "latitude": 38.765,
+  "longitude": -91.234,
+  "flood": {
+    "stageUnits": "ft",
+    "categories": {
+      "major": { "stage": 25, "flow": null },
+      "moderate": { "stage": 20, "flow": null },
+      "minor": { "stage": 15, "flow": null },
+      "action": { "stage": 10, "flow": null }
+    }
+  },
+  "status": {
+    "observed": { "primary": 12.3, "primaryUnit": "ft", "floodCategory": "action" }
+  }
+}
