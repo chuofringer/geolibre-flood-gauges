@@ -1,6 +1,6 @@
 {
   "name": "geolibre-flood-gauges",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "NOAA/NWPS river and coastal gauges. For informational purposes only. Not for life-safety decisions. Hydrographs and deep links for GeoLibre. By flood.live.",
   "type": "module",
   "private": true,
