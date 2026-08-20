@@ -35,6 +35,7 @@ export class GaugeLayerManager {
   private stopped = false;
   private registered = false;
   private boundMap: MapLike | null = null;
+  private refreshIntervalMs = REFRESH_INTERVAL;
 
   private readyResolve!: () => void;
   /** Resolves once the first successful fetch has registered the layer. */
@@ -60,7 +61,19 @@ export class GaugeLayerManager {
     this.readyResolve();
     this.intervalId = setInterval(() => {
       void this.refresh(false);
-    }, REFRESH_INTERVAL);
+    }, this.refreshIntervalMs);
+  }
+
+  /** Applied by project state (plan §3.5); retunes a running interval. */
+  setRefreshIntervalMinutes(minutes: number): void {
+    if (!Number.isFinite(minutes) || minutes <= 0) return;
+    this.refreshIntervalMs = minutes * 60_000;
+    if (this.intervalId != null) {
+      clearInterval(this.intervalId);
+      this.intervalId = setInterval(() => {
+        void this.refresh(false);
+      }, this.refreshIntervalMs);
+    }
   }
 
   stop(): void {
