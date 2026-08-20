@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLatestObserved } from "../src/core/latestObserved";
+import { getLatestObserved, getLatestObservedTime, isValidPrimary } from "../src/core/latestObserved";
 import type { StageFlowResponse } from "../src/core/types";
 
 function response(values: (number | null)[]): StageFlowResponse {
@@ -35,5 +35,32 @@ describe("getLatestObserved", () => {
 
   it("returns null for undefined stageflow data", () => {
     expect(getLatestObserved(undefined)).toBeNull();
+  });
+});
+
+describe("isValidPrimary", () => {
+  it("accepts a real stage, including legitimate negatives above the sentinel", () => {
+    expect(isValidPrimary(12.3)).toBe(true);
+    expect(isValidPrimary(0)).toBe(true);
+    expect(isValidPrimary(-2)).toBe(true);
+  });
+
+  it("rejects NOAA sentinels and nullish", () => {
+    expect(isValidPrimary(-999)).toBe(false);
+    expect(isValidPrimary(-9999)).toBe(false);
+    expect(isValidPrimary(null)).toBe(false);
+    expect(isValidPrimary(undefined)).toBe(false);
+  });
+});
+
+describe("getLatestObservedTime", () => {
+  it("returns the validTime of the last valid reading, skipping trailing sentinels", () => {
+    const sf = response([1, 2, -999]);
+    // response() stamps validTime as t0, t1, t2
+    expect(getLatestObservedTime(sf)).toBe("t1");
+  });
+
+  it("returns null when every point is sentinel/null", () => {
+    expect(getLatestObservedTime(response([null, -999, -9999]))).toBeNull();
   });
 });

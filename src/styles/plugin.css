@@ -160,6 +160,9 @@
 
 .fg-hydrograph {
   margin: 8px 0 4px;
+}
+
+.fg-hydrograph:not(:empty) {
   min-height: 170px;
 }
 

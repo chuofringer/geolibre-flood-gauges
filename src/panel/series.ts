@@ -95,3 +95,11 @@ export function buildSeries(
     windowEndSec: Math.round(windowEnd / 1000),
   };
 }
+
+/** True when there is at least one valid observed or forecast sample to plot. */
+export function hasPlottableSeries(series: BuiltSeries): boolean {
+  return (
+    series.x.length > 0 &&
+    (series.observed.some((v) => v != null) || series.forecast.some((v) => v != null))
+  );
+}

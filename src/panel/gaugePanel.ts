@@ -2,7 +2,7 @@ import { fetchGaugeDetail, fetchStageFlow } from "../data/noaaNwps";
 import { statusColor } from "../core/statusColors";
 import { computeFloodCategory } from "../core/floodCategory";
 import { computeTrend } from "../core/trend";
-import { getLatestObserved } from "../core/latestObserved";
+import { getLatestObserved, getLatestObservedTime, isValidPrimary } from "../core/latestObserved";
 import { formatStaleness } from "./format";
 import { buildSeries } from "./series";
 import { computeStageBarModel, renderStageBar } from "./stageBar";
@@ -232,7 +232,11 @@ function fillDetail(
     major: cats?.major?.stage ?? null,
   };
 
-  const observed = getLatestObserved(stageflow) ?? detail.status?.observed?.primary ?? null;
+  // flood.live rule: primary != null && primary > -999. Do not fall back to
+  // the NWPS snapshot when it is the NOAA missing-obs sentinel (-999).
+  const nwpsPrimary = detail.status?.observed?.primary ?? null;
+  const observed =
+    getLatestObserved(stageflow) ?? (isValidPrimary(nwpsPrimary) ? nwpsPrimary : null);
   const computedStatus =
     computeFloodCategory(observed, thresholds.action, thresholds.minor, thresholds.moderate, thresholds.major) ??
     detail.status?.observed?.floodCategory ??
@@ -259,9 +263,7 @@ function fillDetail(
 
   renderStageBar(targets.stageBarHost, computeStageBarModel(thresholds, observed), units);
 
-  const lastObs = stageflow.observed?.data?.length
-    ? stageflow.observed.data[stageflow.observed.data.length - 1].validTime
-    : null;
+  const lastObs = getLatestObservedTime(stageflow);
 
   targets.staleness.textContent = "";
   if (lastObs) {

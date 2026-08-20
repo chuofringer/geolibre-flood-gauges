@@ -1,7 +1,7 @@
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { FLOOD_COLORS } from "../core/constants";
-import type { BuiltSeries } from "./series";
+import { hasPlottableSeries, type BuiltSeries } from "./series";
 
 const HEIGHT = 170;
 const OBSERVED_COLOR = "#4a9eff";
@@ -26,6 +26,8 @@ export class Hydrograph {
   mount(container: HTMLElement, series: BuiltSeries, units = ""): void {
     this.destroy();
     this.units = units;
+    // Empty/sentinel series must not leave a blank 170px uPlot canvas.
+    if (!hasPlottableSeries(series)) return;
 
     const thresholdSeries = (["action", "minor", "moderate", "major"] as const).map((key) => ({
       label: key,
