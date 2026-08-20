@@ -40,14 +40,18 @@ noting any deviation.
   registry PR).
 - **Side-load a zip** — download a release's
   `geolibre-flood-gauges-<version>.zip` from the
-  [Releases](../../releases) page and install it from a local file in
-  GeoLibre's plugin manager.
-- **Manifest URL** — point GeoLibre's "install from URL" at a
-  `plugin.json` you're serving yourself (see Development below).
+  [Releases](../../releases) page and choose it under **Install from
+  file** in GeoLibre's plugin manager.
+- **Manifest URL** — Settings → Manage Plugins → Settings tab →
+  Manifest URLs. Paste a `plugin.json` you're serving (local stack:
+  `http://localhost:8000/plugin.json`). Reload if it doesn't show in
+  the Plugins menu, then toggle **US Live Flood Gauges** on. The
+  manager's Installed count often stays 0 — that's a GeoLibre host
+  quirk, not a failed install.
 
 ## Usage
 
-Click any gauge dot to open its panel: category badge, threshold table,
+Click any gauge dot to open its panel: category badge, color stage bar,
 staleness indicator, and a hydrograph.
 
 Deep link straight to a gauge:
@@ -70,7 +74,8 @@ GeoLibre checkout.
 npm install
 npm run build:geolibre  # -> geolibre-plugin/dist/{index.js,style.css}
 npm run serve:geolibre   # CORS static server; prints a manifest URL you
-                          # can paste into GeoLibre's "install from URL"
+                          # paste into Settings → Manage Plugins →
+                          # Settings → Manifest URLs
 npm run package:geolibre # -> geolibre-plugin/geolibre-flood-gauges-<version>.zip
 npm run lint
 npm run typecheck
