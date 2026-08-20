@@ -19,8 +19,9 @@ when a gauge near you rises? That's what
 At low zoom the map shows an **H3 flood overview** (ported from
 flood.live's hex presentation): only regions with active flood
 conditions light up, colored by the worst gauge status in each cell —
-quiet country stays clean. Click a hex to zoom in; from zoom 6 the
-individual gauge dots take over, and clicking a dot opens its panel.
+quiet country stays clean. Click a hex to ease in +2 (national ~2 → ~4 →
+~6); from zoom 6 the individual gauge dots take over, and clicking a
+dot opens its panel.
 
 This plugin ports flood.live's production domain logic (flood-category
 thresholds, trend detection, NOAA fetch pipeline) into GeoLibre; every
@@ -29,7 +30,7 @@ noting any deviation.
 
 ![H3 flood overview: only flood-active regions light up at national zoom](docs/screenshot-conus.png)
 
-![Gauge panel with thresholds, staleness, and hydrograph](docs/screenshot-panel.png)
+![Gauge panel with stage bar, staleness, and hydrograph](docs/screenshot-panel.png)
 
 ## Data & provenance
 
@@ -58,8 +59,19 @@ noting any deviation.
 
 ## Usage
 
-Click any gauge dot to open its panel: category badge, color stage bar,
-staleness indicator, and a hydrograph.
+A status chip shows only while NOAA is loading or failed — **Loading
+gauges…** on first load (**Refreshing gauges…** after that). It hides
+when NOAA is healthy. If the fetch fails or is aborted after ~45s, the
+chip shows **Unable to reach NOAA.** (or **Unable to reach NOAA. Showing
+last load.** when a prior load exists) and **Retry**.
+
+Click any gauge dot to open its panel: category badge, color stage bar
+with Action / Minor / Moderate / Major tick labels, staleness indicator,
+and a hydrograph.
+
+NOAA `-999` sentinels (and other missing observations) show
+**Observed: –**. The hydrograph is omitted rather than left as a blank
+hole; the stage bar still draws if thresholds exist (no marker).
 
 Deep link straight to a gauge:
 
@@ -68,9 +80,10 @@ https://web.geolibre.app/?flood-gauge=PTTP1
 ```
 
 `flood-gauge` takes a NOAA gauge LID (letters/digits, up to 10
-characters). An unknown LID opens the panel with "No gauge found"
-instead of doing nothing. The panel footer's "Open on flood.live" link
-takes you to the full flood.live experience for that gauge.
+characters). An unknown or invalid LID opens the panel with **No gauge
+found for this id.** (plus a NOAA LID hint). The panel footer is
+**Open on flood.live** — it opens that gauge on flood.live (`?gauge=` +
+`ref=geolibre`).
 
 ## Development
 
