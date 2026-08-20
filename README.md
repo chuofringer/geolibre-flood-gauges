@@ -10,8 +10,9 @@ domain logic (flood-category thresholds, trend detection, NOAA fetch
 pipeline) into GeoLibre; every ported file carries a `// Source of truth:
 flood.live <path>` header noting any deviation.
 
-**Screenshot:** _placeholder — a colored gauge layer over an active flood
-event with the hydrograph panel open._
+![12,000+ NOAA gauges with flood-category symbology on GeoLibre](docs/screenshot-conus.png)
+
+![Gauge panel with thresholds, staleness, and hydrograph](docs/screenshot-panel.png)
 
 ## Data & provenance
 
