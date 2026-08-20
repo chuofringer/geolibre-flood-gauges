@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
-import { Hydrograph } from "../src/panel/hydrograph";
+import { Hydrograph, axisTheme } from "../src/panel/hydrograph";
 import { buildSeries, hasPlottableSeries } from "../src/panel/series";
 import type { BuiltSeries, SeriesThresholds } from "../src/panel/series";
 import type { StageFlowResponse } from "../src/core/types";
@@ -39,5 +39,17 @@ describe("Hydrograph.mount", () => {
     expect(container.innerHTML).toBe("");
 
     hydro.destroy();
+  });
+});
+
+describe("axisTheme", () => {
+  it("uses high-contrast labels, not the faint grid gray, in both themes", () => {
+    const light = axisTheme(false);
+    const dark = axisTheme(true);
+    expect(light.label).toBe("#374151");
+    expect(dark.label).toBe("#e5e7eb");
+    expect(light.label).not.toEqual(light.grid);
+    expect(dark.label).not.toEqual(dark.grid);
+    expect(dark.grid.includes("0.18")).toBe(false);
   });
 });

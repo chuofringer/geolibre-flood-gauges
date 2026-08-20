@@ -6,15 +6,25 @@ import { hasPlottableSeries, type BuiltSeries } from "./series";
 const HEIGHT = 170;
 const OBSERVED_COLOR = "#4a9eff";
 const OBSERVED_FILL = "rgba(74, 158, 255, 0.10)";
-const GRID_COLOR = "rgba(128, 128, 128, 0.18)";
+
+/** Axis label + tick color. Do not reuse the faint grid stroke — uPlot can
+ *  paint labels with ticks.stroke, and 0.18 gray disappears on `.dark`. */
+export function axisTheme(isDark: boolean): { label: string; grid: string } {
+  return isDark
+    ? { label: "#e5e7eb", grid: "rgba(229, 231, 235, 0.25)" }
+    : { label: "#374151", grid: "rgba(55, 65, 81, 0.22)" };
+}
+
+function hostIsDark(): boolean {
+  return document.documentElement.classList.contains("dark");
+}
 
 /**
  * Thin uPlot wrapper (plan D5/§3.6): observed solid with a soft area fill,
  * forecast dashed (future-only, bridged), 4 threshold horizontal lines.
  * The built-in legend is off — it burned three lines on "--" placeholders;
- * a single-line hover readout under the chart replaces it. Axis/grid colors
- * are resolved from the panel's computed foreground at mount so the chart
- * stays legible in both host themes. Trimmed v1 subset of flood.live's
+ * a single-line hover readout under the chart replaces it. Axis labels use
+ * explicit light/dark colors (not the faint grid stroke). Trimmed v1 subset of flood.live's
  * StageFlowChart.tsx — no range selector, zoom slider, "Now" markline, or
  * rainfall annotation.
  */
@@ -42,8 +52,9 @@ export class Hydrograph {
       ...thresholdSeries.map((t) => series.x.map(() => t.value)),
     ];
 
-    // Resolved theme foreground (the .fg-panel color), so axes track the host theme.
-    const fg = getComputedStyle(container).color || "#888";
+    // Explicit label colors, not computed/muted foreground — dark-theme
+    // axis ticks were unreadable when they inherited the 0.18 grid gray.
+    const theme = axisTheme(hostIsDark());
 
     const readout = document.createElement("div");
     readout.className = "fg-chart-readout";
@@ -109,16 +120,16 @@ export class Hydrograph {
       ],
       axes: [
         {
-          stroke: fg,
-          grid: { stroke: GRID_COLOR, width: 1 },
-          ticks: { stroke: GRID_COLOR, width: 1 },
-          font: "10px system-ui",
+          stroke: theme.label,
+          grid: { stroke: theme.grid, width: 1 },
+          ticks: { stroke: theme.label, width: 1 },
+          font: "11px system-ui",
         },
         {
-          stroke: fg,
-          grid: { stroke: GRID_COLOR, width: 1 },
-          ticks: { stroke: GRID_COLOR, width: 1 },
-          font: "10px system-ui",
+          stroke: theme.label,
+          grid: { stroke: theme.grid, width: 1 },
+          ticks: { stroke: theme.label, width: 1 },
+          font: "11px system-ui",
           // Tick labels carry the stage unit ("2 ft"), so the axis needs no
           // separate rotated label; widen to fit the suffix.
           size: units ? 46 : 36,
