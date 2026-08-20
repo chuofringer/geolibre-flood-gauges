@@ -1,8 +1,8 @@
 {
   "id": "geolibre-flood-gauges",
-  "name": "US Flood Gauges",
-  "version": "0.1.0",
+  "name": "US Live Flood Gauges",
+  "version": "0.2.0",
   "entry": "dist/index.js",
   "style": "dist/style.css",
-  "description": "Live US flood gauge layer from NOAA/NWPS with flood-category symbology, hydrographs, and deep links. By the makers of flood.live."
+  "description": "Live US flood gauge layer from NOAA/NWPS with flood-category symbology, H3 flood overview at low zoom, hydrographs, and deep links. By the makers of flood.live."
 }

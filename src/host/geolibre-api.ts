@@ -22,6 +22,8 @@ export interface GeoLibreLayerStylePartial {
   strokeColor?: string;
   strokeWidth?: number;
   fillOpacity?: number;
+  minZoom?: number;
+  maxZoom?: number;
 }
 
 export interface GeoLibreExternalNativeLayerRegistration {
@@ -54,6 +56,10 @@ export interface MapLike {
   on(type: string, layerId: string, listener: (e: unknown) => void): unknown;
   off(type: string, layerId: string, listener: (e: unknown) => void): unknown;
   getCanvas(): { style: { cursor: string } };
+  getLayer?(id: string): unknown;
+  getSource?(id: string): unknown;
+  addLayer?(layer: Record<string, unknown>, beforeId?: string): unknown;
+  removeLayer?(id: string): unknown;
 }
 
 export interface GeoLibreAppAPI {
@@ -64,6 +70,7 @@ export interface GeoLibreAppAPI {
   openFloatingPanel?: (id: string) => boolean;
   closeFloatingPanel?: (id: string) => void;
   fitBounds?: (bounds: [number, number, number, number]) => void;
+  addLayerGroup?: (name?: string, layerIds?: string[]) => string;
   getMap?: () => MapLike | null;
   openExternalUrl?: (url: string) => void;
 }

@@ -77,9 +77,9 @@ describe("plugin (T3 host contract)", () => {
     stubGaugeFetch(collection([gauge("PTTP1")]));
     const plugin = await loadPlugin();
     plugin.activate(host.app);
-    await vi.waitFor(() => expect(host.layers.size).toBe(1));
+    await vi.waitFor(() => expect(host.layers.size).toBe(3));
 
-    const layer = [...host.layers.values()][0];
+    const layer = host.layers.get("flood-gauges-layer")!;
     expect(layer.nativeLayerIds.length).toBeGreaterThan(0);
     expect(layer.metadata?.originalUrl).toBeTruthy();
     expect(layer.style).toBeDefined();
@@ -94,7 +94,7 @@ describe("plugin (T3 host contract)", () => {
     const plugin = await loadPlugin();
 
     plugin.activate(host.app);
-    await vi.waitFor(() => expect(host.layers.size).toBe(1));
+    await vi.waitFor(() => expect(host.layers.size).toBe(3));
     expect(host.panels.size).toBe(1);
 
     plugin.deactivate(host.app);
@@ -104,10 +104,10 @@ describe("plugin (T3 host contract)", () => {
     expect(host.windowListeners.length).toBe(0);
 
     plugin.activate(host.app);
-    await vi.waitFor(() => expect(host.layers.size).toBe(1));
+    await vi.waitFor(() => expect(host.layers.size).toBe(3));
     expect(host.panels.size).toBe(1);
     // No handler stacking across the reactivate cycle.
-    expect(host.map!.liveHandlerCount).toBe(3); // click, mouseenter, mouseleave
+    expect(host.map!.liveHandlerCount).toBe(9); // click/enter/leave × points + 2 hex tiers
     expect(host.windowListeners.length).toBe(1); // geolibre-layer-labels-change
 
     plugin.deactivate(host.app);
@@ -139,7 +139,7 @@ describe("plugin (T3 host contract)", () => {
     stubGaugeFetch(collection([gauge("PTTP1")]));
     const plugin = await loadPlugin();
     plugin.activate(host.app);
-    await vi.waitFor(() => expect(host.layers.size).toBe(1));
+    await vi.waitFor(() => expect(host.layers.size).toBe(3));
 
     await plugin.handleUrlParameters?.(host.app, new URLSearchParams({ "flood-gauge": "PTTP1" }));
     expect(host.fitBoundsCalls).toHaveLength(1);
@@ -152,7 +152,7 @@ describe("plugin (T3 host contract)", () => {
     stubGaugeFetch(collection([gauge("PTTP1")]));
     const plugin = await loadPlugin();
     plugin.activate(host.app);
-    await vi.waitFor(() => expect(host.layers.size).toBe(1));
+    await vi.waitFor(() => expect(host.layers.size).toBe(3));
 
     await expect(
       plugin.handleUrlParameters?.(host.app, new URLSearchParams({ "flood-gauge": "NOPE1" })),
@@ -179,7 +179,7 @@ describe("plugin (T3 host contract)", () => {
     stubGaugeFetch(collection([gauge("PTTP1")]));
     const plugin = await loadPlugin();
     plugin.activate(host.app);
-    await vi.waitFor(() => expect(host.layers.size).toBe(1));
+    await vi.waitFor(() => expect(host.layers.size).toBe(3));
 
     expect(host.openPanels.size).toBe(0);
     plugin.applyProjectState?.(host.app, { v: 1, selectedGauge: "PTTP1" });
@@ -197,7 +197,7 @@ describe("plugin (T3 host contract)", () => {
     }
 
     expect(() => plugin.activate(host.app)).not.toThrow();
-    await vi.waitFor(() => expect(host.layers.size).toBe(1));
+    await vi.waitFor(() => expect(host.layers.size).toBe(3));
 
     plugin.deactivate(host.app);
   });
@@ -212,8 +212,8 @@ describe("plugin (T3 host contract)", () => {
   it("id/name/version are internally consistent", async () => {
     const plugin = await loadPlugin();
     expect(plugin.id).toBe("geolibre-flood-gauges");
-    expect(plugin.name).toBe("US Flood Gauges");
-    expect(plugin.version).toBe("0.1.0");
+    expect(plugin.name).toBe("US Live Flood Gauges");
+    expect(plugin.version).toBe("0.2.0");
     expect(plugin.urlParameterNames).toContain("flood-gauge");
   });
 

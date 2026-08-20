@@ -60,6 +60,7 @@ export class FakeHost {
   readonly windowListeners: { type: string; listener: EventListenerOrEventListenerObject }[] = [];
   readonly fitBoundsCalls: [number, number, number, number][] = [];
   readonly openedUrls: string[] = [];
+  readonly layerGroups: { name?: string; layerIds?: string[] }[] = [];
   map: FakeMap | null;
 
   readonly app: GeoLibreAppAPI;
@@ -98,6 +99,10 @@ export class FakeHost {
         this.fitBoundsCalls.push(bounds);
       },
       getMap: () => this.map,
+      addLayerGroup: (name, layerIds) => {
+        this.layerGroups.push({ name, layerIds });
+        return `group-${this.layerGroups.length}`;
+      },
       openExternalUrl: (url) => {
         this.openedUrls.push(url);
       },

@@ -7,7 +7,7 @@ import type { GaugeFeature } from "./core/types";
 import type { GeoLibreAppAPI, GeoLibrePlugin } from "./host/geolibre-api";
 
 const PLUGIN_ID = "geolibre-flood-gauges";
-const PLUGIN_VERSION = "0.1.0"; // must equal geolibre-plugin/plugin.json and package.json
+const PLUGIN_VERSION = "0.2.0"; // must equal geolibre-plugin/plugin.json and package.json
 
 let manager: GaugeLayerManager | null = null;
 let currentSelectedGauge: string | null = null;
@@ -35,7 +35,7 @@ function applyState(app: GeoLibreAppAPI, state: ProjectStateV1): void {
 
 export const plugin: GeoLibrePlugin = {
   id: PLUGIN_ID,
-  name: "US Flood Gauges",
+  name: "US Live Flood Gauges",
   version: PLUGIN_VERSION,
   urlParameterNames: [DEEP_LINK_PARAM],
 

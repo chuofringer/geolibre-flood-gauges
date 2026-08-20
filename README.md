@@ -1,8 +1,14 @@
-# US Flood Gauges — a GeoLibre plugin
+# US Live Flood Gauges — a GeoLibre plugin
 
 A live layer of 10,000+ US river and coastal flood gauges from NOAA/NWPS
 on your [GeoLibre](https://geolibre.app) map, with flood-category
 symbology, per-gauge hydrographs, and shareable deep links.
+
+At low zoom the map shows an **H3 flood overview** (ported from
+flood.live's hex presentation): only regions with active flood
+conditions light up, colored by the worst gauge status in each cell —
+quiet country stays clean. Click a hex to zoom in; from zoom 6 the
+individual gauge dots take over, and clicking a dot opens its panel.
 
 Built by the team behind [flood.live](https://flood.live) — real-time US
 flood monitoring with email alerts. This plugin ports flood.live's
@@ -10,7 +16,7 @@ domain logic (flood-category thresholds, trend detection, NOAA fetch
 pipeline) into GeoLibre; every ported file carries a `// Source of truth:
 flood.live <path>` header noting any deviation.
 
-![12,000+ NOAA gauges with flood-category symbology on GeoLibre](docs/screenshot-conus.png)
+![H3 flood overview: only flood-active regions light up at national zoom](docs/screenshot-conus.png)
 
 ![Gauge panel with thresholds, staleness, and hydrograph](docs/screenshot-panel.png)
 

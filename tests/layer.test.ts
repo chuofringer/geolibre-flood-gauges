@@ -89,7 +89,7 @@ describe("GaugeLayerManager", () => {
     void manager.start();
     await manager.ready;
 
-    expect(host.layers.size).toBe(1);
+    expect(host.layers.size).toBe(3);
     const layer = host.layers.get(LAYER_ID)!;
     expect(layer.nativeLayerIds).toEqual([NATIVE_ID]);
     expect(layer.metadata?.originalUrl).toBeTruthy();
@@ -216,7 +216,7 @@ describe("GaugeLayerManager", () => {
 
     stubFetchOnce(collection([gauge()]));
     await manager.refreshNow();
-    expect(host.layers.size).toBe(1);
+    expect(host.layers.size).toBe(3);
 
     manager.stop();
   });
