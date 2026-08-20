@@ -23,6 +23,9 @@ export default defineConfig({
     rollupOptions: {
       external: [],
       output: {
+        // Keep the bundle a single file: the lazy uPlot import (see
+        // src/panel/hydrograph.ts) is inlined but still executes on demand.
+        inlineDynamicImports: true,
         assetFileNames: () => "style.css",
       },
     },

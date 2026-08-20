@@ -1,7 +1,22 @@
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { FLOOD_COLORS } from "../core/constants";
 import { hasPlottableSeries, type BuiltSeries } from "./series";
+
+// uPlot is loaded lazily: its module body touches browser globals
+// (devicePixelRatio, matchMedia) the moment `window` exists, and the
+// registry's validate_plugins.mjs imports every bundle in ONE Node process
+// — an earlier plugin that polyfills `window` would flip uPlot onto its
+// browser path and crash our import. A dynamic import (inlined into the
+// single-file bundle by rollup's inlineDynamicImports, so it stays lazy
+// without a second chunk) keeps module load side-effect-free; uPlot's init
+// runs only when a panel actually mounts a chart in a real browser.
+type UPlotCtor = typeof uPlot;
+let uPlotCtor: Promise<UPlotCtor> | null = null;
+function loadUPlot(): Promise<UPlotCtor> {
+  uPlotCtor ??= import("uplot").then((m) => m.default);
+  return uPlotCtor;
+}
 
 const HEIGHT = 170;
 const OBSERVED_COLOR = "#4a9eff";
@@ -34,6 +49,8 @@ export class Hydrograph {
   private readout: HTMLElement | null = null;
   private units = "";
   private themeObserver: MutationObserver | null = null;
+  /** Bumped by teardown so an in-flight lazy uPlot load can't mount stale. */
+  private mountGeneration = 0;
   private last: { container: HTMLElement; series: BuiltSeries; units: string; dark: boolean } | null =
     null;
 
@@ -144,10 +161,14 @@ export class Hydrograph {
       ],
     };
 
-    this.plot = new uPlot(opts, data, container);
-    container.appendChild(readout);
     this.last = { container, series, units, dark };
     this.watchTheme();
+    const generation = this.mountGeneration;
+    void loadUPlot().then((UPlot) => {
+      if (generation !== this.mountGeneration || !container.isConnected) return;
+      this.plot = new UPlot(opts, data, container);
+      container.appendChild(readout);
+    });
   }
 
   update(series: BuiltSeries): void {
@@ -172,6 +193,7 @@ export class Hydrograph {
   }
 
   private teardownPlot(): void {
+    this.mountGeneration += 1;
     this.plot?.destroy();
     this.plot = null;
     this.readout?.remove();
