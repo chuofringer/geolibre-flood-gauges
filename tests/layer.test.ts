@@ -223,8 +223,9 @@ describe("GaugeLayerManager", () => {
     await manager.ready;
 
     const map = host.map!;
-    delete (map as { getZoom?: unknown }).getZoom;
-    delete (map as { easeTo?: unknown }).easeTo;
+    // Methods live on the prototype; shadow them so the optional-API guard trips.
+    Object.defineProperty(map, "getZoom", { value: undefined });
+    Object.defineProperty(map, "easeTo", { value: undefined });
     map.fire("click", HEX_LAYERS[0].fillId, {
       features: [
         {
