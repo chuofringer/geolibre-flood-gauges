@@ -135,6 +135,7 @@ test.describe("US Live Flood Gauges plugin (T4 smoke)", () => {
     await expect(panel.locator(".fg-observed-value")).toBeVisible({ timeout: 30_000 });
     await expect(panel.locator(".fg-staleness")).toBeVisible();
     await expect(panel.locator(".fg-source")).toContainText("NOAA/NWPS");
+    await expect(panel.locator(".fg-disclaimer")).toContainText("informational purposes");
     await expect(panel.locator(".fg-disclaimer")).toContainText("life-safety");
     await expect(panel.locator(".fg-hydrograph canvas")).toBeVisible({ timeout: 30_000 });
 

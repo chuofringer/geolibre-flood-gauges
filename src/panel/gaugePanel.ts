@@ -53,7 +53,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 const SOURCE_LINE =
   "Source: NOAA/NWPS river and coastal gauges (api.water.noaa.gov) · MapServer every 30 min";
 const DISCLAIMER_LINE =
-  "Not for life-safety decisions. This gauge is not your house. Follow official NOAA and local emergency guidance.";
+  "For informational purposes only. Not for life-safety decisions. Follow official NOAA and local emergency guidance.";
 
 /** Always-visible NOAA attribution + life-safety line. Empty state and loaded panel share this. */
 function appendHonesty(parent: HTMLElement): void {

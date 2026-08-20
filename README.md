@@ -13,8 +13,8 @@ when a gauge near you rises? That's what
 > **Source:** NOAA/NWPS river and coastal gauges (`api.water.noaa.gov`) ·
 > MapServer every 30 min.
 >
-> **Not for life-safety decisions.** A gauge is not your house. Follow
-> official NOAA and local emergency guidance.
+> **For informational purposes only.** Not for life-safety decisions.
+> Follow official NOAA and local emergency guidance.
 
 At low zoom the map shows an **H3 flood overview** (ported from
 flood.live's hex presentation): only regions with active flood
@@ -37,9 +37,9 @@ noting any deviation.
   current status: NOAA MapServer (`mapservices.weather.noaa.gov`),
   refreshed every 30 minutes. Thresholds and hydrographs:
   `api.water.noaa.gov`.
-- **A gauge is not your house.**
-- **Not for life-safety decisions.** Follow official NOAA and local
-  emergency guidance. The same lines are on the gauge panel.
+- **For informational purposes only.** Not for life-safety decisions.
+  Follow official NOAA and local emergency guidance. The same lines
+  are on the gauge panel.
 
 ## Install
 

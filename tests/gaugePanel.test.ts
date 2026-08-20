@@ -80,8 +80,8 @@ describe("gaugePanel", () => {
     expect(container.textContent).toMatch(/Select a gauge/);
     expect(container.querySelector(".fg-source")?.textContent).toContain("NOAA/NWPS");
     expect(container.querySelector(".fg-source")?.textContent).toContain("river and coastal");
+    expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/informational purposes/);
     expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/life-safety/);
-    expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/not your house/i);
   });
 
   it("openGaugePanel re-registers with a gauge-bound render fn and opens it", async () => {
@@ -110,8 +110,8 @@ describe("gaugePanel", () => {
     expect(container.querySelector(".fg-staleness")?.textContent).toContain("Data: NOAA/NWPS");
     expect(container.querySelector(".fg-source")?.textContent).toContain("NOAA/NWPS");
     expect(container.querySelector(".fg-source")?.textContent).toContain("river and coastal");
+    expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/informational purposes/);
     expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/life-safety/);
-    expect(container.querySelector(".fg-disclaimer")?.textContent).toMatch(/not your house/i);
     expect(container.querySelector(".fg-link")?.getAttribute("href")).toBe(
       "https://flood.live?gauge=PTTP1&ref=geolibre",
     );
