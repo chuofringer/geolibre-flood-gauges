@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { GaugeLayerManager, LAYER_ID, NATIVE_ID, computeDigest } from "../src/layer";
+import { GaugeLayerManager, HEX_LAYERS, LAYER_ID, NATIVE_ID, computeDigest } from "../src/layer";
 import { FakeHost } from "./support/fakeHost";
 import type { GaugeGeoJSON, GaugeFeature } from "../src/core/types";
 
@@ -187,6 +187,64 @@ describe("GaugeLayerManager", () => {
 
     host.map!.fire("click", NATIVE_ID, { features: [{ properties: { gaugelid: "PTTP1" } }] });
     expect(onClick).toHaveBeenCalledWith({ gaugelid: "PTTP1" });
+
+    manager.stop();
+  });
+
+  it("hex click eases +2 to the cell centroid (flood.live FloodMap.tsx)", async () => {
+    stubFetchOnce(collection([gauge()]));
+    const manager = new GaugeLayerManager(host.app, vi.fn());
+    void manager.start();
+    await manager.ready;
+
+    host.map!.zoom = 2;
+    // Closed ring — flood.live averages every vertex, including the closer.
+    const ring: [number, number][] = [
+      [-92, 37],
+      [-90, 37],
+      [-90, 39],
+      [-92, 39],
+      [-92, 37],
+    ];
+    host.map!.fire("click", HEX_LAYERS[0].fillId, {
+      features: [{ geometry: { type: "Polygon", coordinates: [ring] } }],
+    });
+
+    expect(host.fitBoundsCalls).toHaveLength(0);
+    expect(host.map!.easeToCalls).toEqual([{ center: [-91.2, 37.8], zoom: 4 }]);
+
+    manager.stop();
+  });
+
+  it("hex click is a no-op when the map lacks easeTo/getZoom", async () => {
+    stubFetchOnce(collection([gauge()]));
+    const manager = new GaugeLayerManager(host.app, vi.fn());
+    void manager.start();
+    await manager.ready;
+
+    const map = host.map!;
+    delete (map as { getZoom?: unknown }).getZoom;
+    delete (map as { easeTo?: unknown }).easeTo;
+    map.fire("click", HEX_LAYERS[0].fillId, {
+      features: [
+        {
+          geometry: {
+            type: "Polygon",
+            coordinates: [
+              [
+                [-92, 37],
+                [-90, 37],
+                [-90, 39],
+                [-92, 37],
+              ],
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(host.fitBoundsCalls).toHaveLength(0);
+    expect(map.easeToCalls).toHaveLength(0);
 
     manager.stop();
   });

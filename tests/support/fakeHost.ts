@@ -10,6 +10,8 @@ type Handler = (e: unknown) => void;
 /** Records every `map.on`/`map.off` call so tests can assert full teardown. */
 export class FakeMap implements MapLike {
   readonly handlerLedger = new Map<string, Set<Handler>>();
+  zoom = 2;
+  readonly easeToCalls: { center: [number, number]; zoom: number }[] = [];
 
   on(type: string, layerId: string, listener: Handler): unknown {
     const key = `${type}:${layerId}`;
@@ -25,6 +27,16 @@ export class FakeMap implements MapLike {
 
   getCanvas() {
     return { style: { cursor: "" } };
+  }
+
+  getZoom(): number {
+    return this.zoom;
+  }
+
+  easeTo(options: { center: [number, number]; zoom: number }): unknown {
+    this.easeToCalls.push(options);
+    this.zoom = options.zoom;
+    return this;
   }
 
   fire(type: string, layerId: string, event: unknown): void {

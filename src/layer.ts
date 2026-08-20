@@ -303,23 +303,24 @@ export class GaugeLayerManager {
     this.onGaugeClick(properties as unknown as GaugeProperties);
   }
 
-  /** Clicking an overview hex zooms to its extent (drill-down toward the dots). */
+  /**
+   * Hex click = zoom-in, not select (flood.live FloodMap.tsx).
+   * easeTo the cell centroid at currentZoom + 2 — fitBounds on a res-3
+   * cell slammed national (~2) straight to the gauge-dot threshold (~7.7).
+   */
   private handleHexClick(e: MapMouseEventLike): void {
     const geometry = e.features?.[0]?.geometry;
     if (geometry?.type !== "Polygon" || !Array.isArray(geometry.coordinates)) return;
     const ring = (geometry.coordinates as [number, number][][])[0];
     if (!ring?.length) return;
-    let minLng = Infinity;
-    let minLat = Infinity;
-    let maxLng = -Infinity;
-    let maxLat = -Infinity;
-    for (const [lng, lat] of ring) {
-      if (lng < minLng) minLng = lng;
-      if (lat < minLat) minLat = lat;
-      if (lng > maxLng) maxLng = lng;
-      if (lat > maxLat) maxLat = lat;
-    }
-    this.app.fitBounds?.([minLng, minLat, maxLng, maxLat]);
+    const map = this.app.getMap?.();
+    if (!map?.getZoom || !map.easeTo) return;
+    const centerLng = ring.reduce((sum, c) => sum + c[0], 0) / ring.length;
+    const centerLat = ring.reduce((sum, c) => sum + c[1], 0) / ring.length;
+    map.easeTo({
+      center: [centerLng, centerLat],
+      zoom: map.getZoom() + 2,
+    });
   }
 }
 
