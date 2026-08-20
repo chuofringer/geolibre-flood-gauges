@@ -45,14 +45,18 @@ noting any deviation.
   current status: NOAA MapServer (`mapservices.weather.noaa.gov`),
   refreshed every 30 minutes. Thresholds and hydrographs:
   `api.water.noaa.gov`.
+- **Coverage:** United States only (NOAA/NWPS river and coastal
+  gauges).
 - **For informational purposes only.** Not for life-safety decisions.
   Follow official NOAA and local emergency guidance. The same lines
   are on the gauge panel.
 
 ## Install
 
-- **Registry** — coming soon (pending the `opengeos/geolibre-plugins`
-  registry PR).
+- **Registry** — listed as **US Live Flood Gauges** in GeoLibre's
+  official plugin registry
+  ([plugins.geolibre.app](https://plugins.geolibre.app)). Open
+  Settings → Manage Plugins and toggle it on.
 - **Side-load a zip** — download a release's
   `geolibre-flood-gauges-<version>.zip` from the
   [Releases](../../releases) page and choose it under **Install from
