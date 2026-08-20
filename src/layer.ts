@@ -1,16 +1,53 @@
 import { NOAA_MAP_SERVER_URL, REFRESH_INTERVAL } from "./core/constants";
 import { fetchAllGauges } from "./data/noaaMapServer";
-import { gaugeLayerStyle } from "./style";
+import { aggregateToHex, FLOOD_STATUSES, type HexFeatureCollection } from "./core/hexAggregation";
+import { gaugeLayerStyle, hexLayerStyle, HEX_COLOR_EXPRESSION } from "./style";
 import type { GaugeFeature, GaugeGeoJSON, GaugeProperties } from "./core/types";
-import type { GeoLibreAppAPI, MapLike } from "./host/geolibre-api";
+import type { GeoLibreAppAPI, GeoLibreFeatureCollection, MapLike } from "./host/geolibre-api";
 
 export const LAYER_ID = "flood-gauges-layer";
 export const NATIVE_ID = "flood-gauges-points";
+export const LAYER_NAME = "US Live Flood Gauges (NOAA)";
+export const GROUP_NAME = "US Live Flood Gauges";
+
+// Low-zoom H3 overview (flood.live parity, HexSource.tsx): res-3 hexes to
+// zoom 5, res-4 hexes for the 5–6 band, raw dots from zoom 6 up. Only
+// flood-active hexes are registered, so quiet regions stay clean.
+//
+// Rendering note: the host's external-GeoJSON path draws polygons as a LINE
+// layer only (layer-sync's geometry profile has no fill branch). The fill is
+// ours: `fillId` is listed in `nativeLayerIds` so the host ADOPTS it —
+// zoom-range, visibility, opacity, reorder, and unregister-removal all apply
+// — but the layer itself is added by `ensureHexFillLayers()` against the
+// host-created `<nativeId>-source`, and re-added after every host sync pass
+// (the `geolibre-layer-labels-change` signal) so it survives basemap
+// switches exactly like our click handlers do.
+export const HEX_LAYERS = [
+  {
+    id: "flood-gauges-hex3-layer",
+    nativeId: "flood-gauges-hex3",
+    fillId: "flood-gauges-hex3-fill",
+    name: "Flood Overview — national (H3)",
+    resolution: 3,
+    minZoom: 0,
+    maxZoom: 5,
+  },
+  {
+    id: "flood-gauges-hex4-layer",
+    nativeId: "flood-gauges-hex4",
+    fillId: "flood-gauges-hex4-fill",
+    name: "Flood Overview — regional (H3)",
+    resolution: 4,
+    minZoom: 5,
+    maxZoom: 6,
+  },
+] as const;
 
 export type GaugeClickHandler = (properties: GaugeProperties) => void;
 
 interface MapMouseFeatureLike {
   properties?: Record<string, unknown>;
+  geometry?: { type?: string; coordinates?: unknown };
 }
 interface MapMouseEventLike {
   features?: MapMouseFeatureLike[];
@@ -42,6 +79,7 @@ export class GaugeLayerManager {
   readonly ready: Promise<void>;
 
   private readonly boundClick = (e: unknown) => this.handleClick(e as MapMouseEventLike);
+  private readonly boundHexClick = (e: unknown) => this.handleHexClick(e as MapMouseEventLike);
   private readonly boundMouseEnter = () => this.setCursor("pointer");
   private readonly boundMouseLeave = () => this.setCursor("");
   private readonly bindMapHandlersRef = () => this.bindMapHandlers();
@@ -88,6 +126,17 @@ export class GaugeLayerManager {
     this.unbindMapHandlers();
     window.removeEventListener("geolibre-layer-labels-change", this.bindMapHandlersRef);
     this.app.unregisterExternalNativeLayer?.(LAYER_ID);
+    for (const hex of HEX_LAYERS) {
+      this.app.unregisterExternalNativeLayer?.(hex.id);
+    }
+    // Belt and braces: the host removes adopted native ids on unregister,
+    // but if it ever misses ours, take the fill layers down explicitly.
+    const map = this.boundMap ?? this.app.getMap?.() ?? null;
+    if (map?.getLayer && map.removeLayer) {
+      for (const hex of HEX_LAYERS) {
+        if (map.getLayer(hex.fillId)) map.removeLayer(hex.fillId);
+      }
+    }
   }
 
   /** Test hook: force an immediate refresh cycle, bypassing the interval. */
@@ -121,7 +170,7 @@ export class GaugeLayerManager {
 
       this.data = data;
       this.digest = digest;
-      this.register(data, !this.registered);
+      this.registerAll(data, !this.registered);
       this.registered = true;
     } catch (err) {
       // Failed fetch (including the very first one): log, keep the
@@ -134,10 +183,10 @@ export class GaugeLayerManager {
     }
   }
 
-  private register(data: GaugeGeoJSON, first: boolean): void {
+  private registerAll(data: GaugeGeoJSON, first: boolean): void {
     this.app.registerExternalNativeLayer?.({
       id: LAYER_ID,
-      name: "US Flood Gauges (NOAA)",
+      name: LAYER_NAME,
       nativeLayerIds: [NATIVE_ID],
       geojson: data,
       // originalUrl keeps the (up to 10k-feature) collection out of
@@ -148,15 +197,81 @@ export class GaugeLayerManager {
       // it on refresh would silently revert Style-panel changes every cycle.
       ...(first ? { style: gaugeLayerStyle() } : {}),
     });
+
+    for (const hex of HEX_LAYERS) {
+      const aggregated = aggregateToHex(data, hex.resolution);
+      const active: HexFeatureCollection = {
+        type: "FeatureCollection",
+        features: aggregated.features.filter((f) => FLOOD_STATUSES.has(f.properties.worstStatus)),
+      };
+      this.app.registerExternalNativeLayer?.({
+        id: hex.id,
+        name: hex.name,
+        // fillId second: the host renders the FIRST id (as a line layer for
+        // polygons) and adopts the rest — our fill layer (see HEX_LAYERS note).
+        nativeLayerIds: [hex.nativeId, hex.fillId],
+        geojson: active as unknown as GeoLibreFeatureCollection,
+        // Derived data: restorable from the same source URL on reopen.
+        metadata: { originalUrl: NOAA_MAP_SERVER_URL },
+        ...(first ? { style: hexLayerStyle(hex.minZoom, hex.maxZoom) } : {}),
+      });
+    }
+    this.ensureHexFillLayers();
+
+    if (first) {
+      this.app.addLayerGroup?.(GROUP_NAME, [
+        LAYER_ID,
+        ...HEX_LAYERS.map((hex) => hex.id),
+      ]);
+    }
+  }
+
+  /**
+   * Adds our fill layer for each hex tier when the host-created source
+   * exists and the fill is missing (fresh activate, basemap switch, map
+   * re-init). Inserted beneath the host's outline layer. The raw MapLibre
+   * expression array is correct at this level — the JSON-string rule
+   * (plan §3.3) applies only to the host's LayerStyle field.
+   */
+  private ensureHexFillLayers(): void {
+    const map = this.app.getMap?.();
+    if (!map?.addLayer || !map.getLayer || !map.getSource) return;
+    for (const hex of HEX_LAYERS) {
+      const sourceId = `${hex.nativeId}-source`;
+      if (map.getLayer(hex.fillId) || !map.getSource(sourceId)) continue;
+      map.addLayer(
+        {
+          id: hex.fillId,
+          type: "fill",
+          source: sourceId,
+          minzoom: hex.minZoom,
+          maxzoom: hex.maxZoom,
+          filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
+          paint: {
+            "fill-color": HEX_COLOR_EXPRESSION,
+            "fill-opacity": 1,
+          },
+        },
+        map.getLayer(hex.nativeId) ? hex.nativeId : undefined,
+      );
+    }
   }
 
   private bindMapHandlers(): void {
+    this.ensureHexFillLayers();
     const map = this.app.getMap?.();
     if (!map) return; // map not ready yet; the next labels-change event retries
     this.unbindFrom(map);
     map.on("click", NATIVE_ID, this.boundClick);
     map.on("mouseenter", NATIVE_ID, this.boundMouseEnter);
     map.on("mouseleave", NATIVE_ID, this.boundMouseLeave);
+    for (const hex of HEX_LAYERS) {
+      // Bound to the fill layer: the interior is the click target, not the
+      // 1px outline the host draws under hex.nativeId.
+      map.on("click", hex.fillId, this.boundHexClick);
+      map.on("mouseenter", hex.fillId, this.boundMouseEnter);
+      map.on("mouseleave", hex.fillId, this.boundMouseLeave);
+    }
     this.boundMap = map;
   }
 
@@ -170,6 +285,11 @@ export class GaugeLayerManager {
     map.off("click", NATIVE_ID, this.boundClick);
     map.off("mouseenter", NATIVE_ID, this.boundMouseEnter);
     map.off("mouseleave", NATIVE_ID, this.boundMouseLeave);
+    for (const hex of HEX_LAYERS) {
+      map.off("click", hex.fillId, this.boundHexClick);
+      map.off("mouseenter", hex.fillId, this.boundMouseEnter);
+      map.off("mouseleave", hex.fillId, this.boundMouseLeave);
+    }
   }
 
   private setCursor(cursor: string): void {
@@ -181,6 +301,25 @@ export class GaugeLayerManager {
     const properties = e.features?.[0]?.properties;
     if (!properties) return;
     this.onGaugeClick(properties as unknown as GaugeProperties);
+  }
+
+  /** Clicking an overview hex zooms to its extent (drill-down toward the dots). */
+  private handleHexClick(e: MapMouseEventLike): void {
+    const geometry = e.features?.[0]?.geometry;
+    if (geometry?.type !== "Polygon" || !Array.isArray(geometry.coordinates)) return;
+    const ring = (geometry.coordinates as [number, number][][])[0];
+    if (!ring?.length) return;
+    let minLng = Infinity;
+    let minLat = Infinity;
+    let maxLng = -Infinity;
+    let maxLat = -Infinity;
+    for (const [lng, lat] of ring) {
+      if (lng < minLng) minLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lng > maxLng) maxLng = lng;
+      if (lat > maxLat) maxLat = lat;
+    }
+    this.app.fitBounds?.([minLng, minLat, maxLng, maxLat]);
   }
 }
 

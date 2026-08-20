@@ -10,7 +10,7 @@ import type { GaugeDetail, GaugeProperties, StageFlowResponse } from "../core/ty
 import type { GeoLibreAppAPI } from "../host/geolibre-api";
 
 export const PANEL_ID = "flood-gauges-panel";
-export const PANEL_TITLE = "US Flood Gauges";
+export const PANEL_TITLE = "US Live Flood Gauges";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -241,13 +241,18 @@ function fillDetail(
   targets.badge.textContent = STATUS_LABEL[computedStatus] ?? computedStatus;
   targets.badge.style.backgroundColor = statusColor(computedStatus);
 
+  const stageUnits = detail.flood?.stageUnits ?? stageflow.observed?.primaryUnits ?? "";
   for (const row of THRESHOLD_ROWS) {
     const cell = targets.valueCells.get(row.key);
     if (!cell) continue;
     const value = thresholds[row.key];
-    cell.textContent = value == null ? "–" : `${value}`;
+    cell.textContent = value == null ? "–" : `${value}${stageUnits ? ` ${stageUnits}` : ""}`;
     if (observed != null && isHighestExceeded(row.key, thresholds, observed)) {
       cell.classList.add("fg-observed");
+      // Tint the whole exceeded row with its category color so the current
+      // stage reads at a glance (bold alone was too subtle).
+      const tr = cell.parentElement as HTMLElement | null;
+      if (tr) tr.style.background = `color-mix(in srgb, ${statusColor(row.key)} 14%, transparent)`;
     }
   }
 
@@ -284,7 +289,7 @@ function fillDetail(
 
   const now = Date.now();
   const series = buildSeries(stageflow, thresholds, now);
-  targets.hydrograph.mount(targets.hydrographContainer, series);
+  targets.hydrograph.mount(targets.hydrographContainer, series, units);
 }
 
 function isHighestExceeded(

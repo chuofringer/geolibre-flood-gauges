@@ -24,7 +24,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const page1 = JSON.parse(readFileSync(join(__dirname, "fixtures/mapserver-page-1.json"), "utf8"));
 const page2 = JSON.parse(readFileSync(join(__dirname, "fixtures/mapserver-page-2.json"), "utf8"));
 
-const LAYER_NAME = "US Flood Gauges (NOAA)";
+const LAYER_NAME = "US Live Flood Gauges (NOAA)";
 
 const NWPS_STAGEFLOW = {
   observed: {
@@ -105,7 +105,7 @@ function layerEntryCount(page: Page, name: string): Promise<number> {
   }, name);
 }
 
-test.describe("US Flood Gauges plugin (T4 smoke)", () => {
+test.describe("US Live Flood Gauges plugin (T4 smoke)", () => {
   test("installs from the manifest URL, activates via the deep link, and renders the layer", async ({
     page,
   }) => {
@@ -201,7 +201,7 @@ test.describe("US Flood Gauges plugin (T4 smoke)", () => {
   });
 });
 
-test.describe("US Flood Gauges plugin at the minGeoLibreVersion floor (2.0.0)", () => {
+test.describe("US Live Flood Gauges plugin at the minGeoLibreVersion floor (2.0.0)", () => {
   // Reduced assertion set — the D6 registry compatibility claim is
   // CI-tested against a second pinned build, not aspirational. The
   // workflow (.github/workflows/e2e.yml) points GEOLIBRE_URL at a

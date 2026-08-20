@@ -1,5 +1,7 @@
 /* All selectors are .fg- prefixed: plugin `style` is injected globally into
-   the host page, so nothing here may leak into host or other-plugin DOM. */
+   the host page, so nothing here may leak into host or other-plugin DOM.
+   Theme: every color is either a host token (hsl(var(--…))) or an explicit
+   light/dark pair via the host's `.dark` class on <html>. */
 
 .fg-panel {
   font-family:
@@ -10,8 +12,8 @@
   color: hsl(var(--foreground));
   background: hsl(var(--card));
   font-size: 13px;
-  line-height: 1.4;
-  padding: 4px 2px;
+  line-height: 1.45;
+  padding: 6px 4px 4px;
 }
 
 .fg-muted {
@@ -19,7 +21,7 @@
 }
 
 .fg-header {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .fg-lid-row {
@@ -29,70 +31,40 @@
 }
 
 .fg-lid {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
+  letter-spacing: 0.02em;
   margin: 0;
 }
 
 .fg-location {
   margin: 2px 0 0;
+  font-size: 12px;
   color: hsl(var(--muted-foreground));
 }
 
 .fg-badge-row {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .fg-badge {
   display: inline-block;
-  padding: 2px 10px;
+  padding: 3px 12px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   color: #000;
 }
 
-.fg-thresholds {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 6px 0;
-}
-
-.fg-thresholds td {
-  padding: 3px 4px;
-  border-bottom: 1px solid hsl(var(--border));
-  font-variant-numeric: tabular-nums;
-}
-
-.fg-threshold-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.fg-chip {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  flex: none;
-}
-
-.fg-threshold-value {
-  text-align: right;
-}
-
-.fg-threshold-value.fg-observed {
-  font-weight: 700;
-}
-
 .fg-observed-row {
-  margin: 6px 0 2px;
+  margin: 8px 0 4px;
   font-size: 13px;
 }
 
 .fg-observed-value {
   font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .fg-trend-rising {
@@ -107,16 +79,61 @@
   color: hsl(var(--muted-foreground));
 }
 
+.fg-thresholds {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0 8px;
+}
+
+.fg-thresholds td {
+  padding: 4px 6px;
+  border-bottom: 1px solid hsl(var(--border));
+  font-variant-numeric: tabular-nums;
+}
+
+.fg-thresholds tr:last-child td {
+  border-bottom: none;
+}
+
+.fg-threshold-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.fg-chip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.fg-threshold-value {
+  text-align: right;
+  color: hsl(var(--muted-foreground));
+}
+
+.fg-threshold-value.fg-observed {
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
 .fg-staleness {
-  margin: 4px 0 2px;
+  margin: 6px 0 2px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
 }
 
 .fg-staleness.fg-amber {
   color: #d97706;
+  font-weight: 600;
 }
 
 .fg-staleness.fg-stale-red {
   color: #dc2626;
+  font-weight: 600;
 }
 
 .fg-provenance {
@@ -125,21 +142,55 @@
 }
 
 .fg-hydrograph {
-  margin: 6px 0;
-  min-height: 180px;
+  margin: 8px 0 4px;
+  min-height: 170px;
+}
+
+.fg-chart-readout {
+  min-height: 16px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
 }
 
 .fg-footer {
-  margin: 8px 0 0;
-  text-align: right;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid hsl(var(--border));
 }
 
+/* The flood.live handoff is the plugin's reason to exist — a real button,
+   not a footnote. Copy stays neutral ("Open on flood.live") per design
+   review; presentation carries the weight. */
 .fg-link {
-  color: hsl(var(--foreground));
-  text-decoration: underline;
-  font-size: 12px;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
+  transition: background 120ms ease;
 }
+
+.fg-link:hover {
+  background: #1d4ed8;
+}
+
+.fg-link::after {
+  content: " ↗";
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+/* ── Dark theme (host toggles `.dark` on <html>) ───────────────────────── */
 
 .dark .fg-badge {
   color: #000;
@@ -151,4 +202,25 @@
 
 .dark .fg-staleness.fg-stale-red {
   color: #f87171;
+}
+
+.dark .fg-trend-rising {
+  color: #f87171;
+}
+
+.dark .fg-trend-falling {
+  color: #60a5fa;
+}
+
+.dark .fg-chip {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.dark .fg-link {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.dark .fg-link:hover {
+  background: #2563eb;
 }
