@@ -1,0 +1,33 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules
+dist
+*.local
+geolibre-plugin/dist/
+geolibre-plugin/*.zip
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing
+coverage
+test-results/
+playwright-report/
+
+# Environment
+.env
+.env.local
+.env.*.local
+.vite/
